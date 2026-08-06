@@ -19,6 +19,54 @@
 
 ---
 
+## 2026-08-07 T-007: レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `85e714c`のレビューを委任した。報告された4箇所（ホームヘッダー、ボトムシート群、フィルムストリップ、Present上下バー）すべてに`--safe-*`が適用されていること、`.sheet`一括適用に意図しない副作用がないこと（使用箇所3つを全数確認）、Web版（`env()`が0になる環境）で余白が重複・崩れないこと（`calc(var(--sp-*) + var(--safe-*))`形式でフォールバック0pxが機能）を確認。`npm test`/`npm run build`/`npx cap sync android`→`gradle assembleDebug`をすべて再実行し成功を確認。指摘事項なし（findings空）、承認。
+
+### 結果
+- T-007を完了とした。debug APKを再ビルドし（`android/app/build/outputs/apk/debug/app-debug.apk`）Userへ渡す。
+
+### 次回開始位置
+- 実機での最終確認はUser側で実施。問題があれば追加で報告してもらう。
+
+---
+
+## 2026-08-07 T-007: セーフエリア対応の実装
+
+### 実施内容
+- `src/styles.css`の`:root`に`--safe-top`/`--safe-bottom`/`--safe-left`/`--safe-right`（それぞれ`env(safe-area-inset-*, 0px)`）を追加した。
+- 画面端に固定表示される要素へ、既存の`padding`に`calc()`でセーフエリア変数を加算する形で適用した（個別画面ごとの重複を避け、共通クラス単位で一括対応）。
+  - `.home`（左右+上）、`.home__list`（下、FABと重ならないための既存96pxに加算）、`.fab`（右+下）
+  - `.sheet`（下+左右）: `EditorScreen`のレイアウト候補シート・警告シート、`HomeScreen`のデッキ操作シートが共通で使用しているため、この1箇所の修正で全ボトムシートに反映される
+  - `.editor__header`（上+左右）、`.editor__filmstrip`（下+左右、エディタ最下部の要素）
+  - `.present__top`（上+左右）、`.present__bottom`（下+左右）: プレゼン全画面表示中はUI要素が非表示になるため、表示時のみ影響する
+- `editor__undo-bar`・`editor__toolbar`は画面端に接していない中間要素のため対象外とした（判定ラダーに沿い過剰な適用を避けた）。
+
+### 結果
+- `npm test`: 21 passed（回帰なし）。
+- `npm run build`: 型エラーなく成功。`grep -o "env(safe-area-inset-[a-z]*" dist/assets/*.css`でtop/bottom/left/rightすべてが出力に含まれることを確認した。
+- 実機・エミュレータがこの開発コンテナにないため直接の視覚確認は未実施（Chrome DevToolsのデバイスエミュレーションでの`env()`疑似確認も本コンテナのPlaywright/Chromiumでは`env()`の実機シミュレーションができないため実施していない）。CSSの`calc()`構文と対象クラスの適用範囲はコードレビューで妥当性を判断する。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`（`android/local.properties`は`sdk.dir=/opt/android-sdk`設定済みのため変更不要）を実行し`BUILD SUCCESSFUL`（49秒、184 actionable tasks、27実行/157 up-to-date）。生成物`android/app/build/outputs/apk/debug/app-debug.apk`（約24.5MB）を確認した。
+
+### 次回開始位置
+- reviewerに、セーフエリア適用箇所の妥当性（適用漏れ・過剰適用の両面）と、実機未検証である旨を踏まえたレビューを依頼する。承認後、Userに実機での再確認を依頼する。
+
+---
+
+## 2026-08-07 T-007: Android実機確認でシステムバー干渉を発見
+
+### 実施内容
+- Userが実機にAPKをインストールして確認したところ、スクリーンショットで以下が判明した。
+  - 画面下部: レイアウト候補シート等のボトムシートが、Androidのジェスチャーナビゲーション/戻る・ホーム・タスク切替のタップ領域と重なっている。
+  - 画面上部: ヘッダーバーが、Android側の時刻表示等のステータスバーと重なっている。
+- 原因調査: `index.html`の`viewport-fit=cover`は設定済みだが、`src/styles.css`側で`env(safe-area-inset-top)`/`env(safe-area-inset-bottom)`を使った余白確保がされておらず、Capacitor/WebViewがedge-to-edge（画面全体）表示になっているためコンテンツがシステムバーの裏に描画されている。
+
+### 次回開始位置
+- developerに、Home/Editor/PresentのヘッダーやボトムシートにセーフエリアCSS変数を用いた余白を追加する修正を依頼する。
+
+---
+
 ## 2026-08-06 T-006: 最終レビュー承認・完了（Phase 1〜4完了）
 
 ### 実施内容
