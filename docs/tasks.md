@@ -21,7 +21,7 @@
 | T-004 | Phase 2: PNG/PDF出力 | 中 | 完了 | developer/reviewer | Reviewer検証でCritical/High/Medium指摘なし。Low指摘2件（画像アセット欠落時のプレースホルダー未描画、PDFにテキストレイヤー/alt情報なし）は既知の制約として記録し許容 |
 | T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 完了 | developer/reviewer | 3回の指摘サイクル（改行破壊/Undo欠如/Undoとマーカー競合）を経てCritical/High/Medium指摘なしを確認 |
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 完了 | developer/reviewer | debug APKビルド成功、納品docs一式作成。Reviewer指摘のファイル名サニタイズ修正後、Critical/High/Medium指摘なしで承認。Phase 1〜4すべて完了 |
-| T-007 | Android実機でのシステムバー（時刻表示・戻る/ホームボタン）とUIの重なりを解消 | 高 | レビュー中 | developer | User実機確認（スクリーンショット添付）で発覚。edge-to-edge表示に対しセーフエリア余白が未適用。`env(safe-area-inset-*)`をCSS変数化し各画面の端要素に適用済み、reviewerによる確認待ち |
+| T-007 | Android実機でのシステムバー（時刻表示・戻る/ホームボタン）とUIの重なりを解消 | 高 | 完了 | developer/reviewer | `env(safe-area-inset-*)`をヘッダー/ボトムシート/フィルムストリップ/Present上下バーに適用。Reviewer検証で指摘なし。User実機での最終確認待ち |
 
 ## バックログ（未着手・優先度未確定）
 

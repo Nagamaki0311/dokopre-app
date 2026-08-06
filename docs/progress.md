@@ -19,6 +19,19 @@
 
 ---
 
+## 2026-08-07 T-007: レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `85e714c`のレビューを委任した。報告された4箇所（ホームヘッダー、ボトムシート群、フィルムストリップ、Present上下バー）すべてに`--safe-*`が適用されていること、`.sheet`一括適用に意図しない副作用がないこと（使用箇所3つを全数確認）、Web版（`env()`が0になる環境）で余白が重複・崩れないこと（`calc(var(--sp-*) + var(--safe-*))`形式でフォールバック0pxが機能）を確認。`npm test`/`npm run build`/`npx cap sync android`→`gradle assembleDebug`をすべて再実行し成功を確認。指摘事項なし（findings空）、承認。
+
+### 結果
+- T-007を完了とした。debug APKを再ビルドし（`android/app/build/outputs/apk/debug/app-debug.apk`）Userへ渡す。
+
+### 次回開始位置
+- 実機での最終確認はUser側で実施。問題があれば追加で報告してもらう。
+
+---
+
 ## 2026-08-07 T-007: セーフエリア対応の実装
 
 ### 実施内容
