@@ -19,6 +19,18 @@
 
 ---
 
+## 2026-08-06 T-005: 再レビューで新規Medium指摘（差し戻し）
+
+### 実施内容
+- reviewerにcommit `40a9684`の再レビューを委任した。前回指摘2件（summarizeの改行破壊・Undo欠如）はいずれも解消を確認（過剰ガードによる機能退行なし、意図しない状態への復元なし）。
+- 新規にMedium/CONFIRMED 1件を発見: 要約適用後、`summarizeUndo`を保持したまま同一ブロックにマーカー/強調を適用すると`summarizeUndo`がクリアされず、「元に戻す」を押すとtextのみ要約前の原文に復元されmarker/emphasisは新しい設定のまま残る。結果、ユーザーが要約後の短いテキストに適用したつもりのマーカーが、要約前の長い原文全体に波及した状態で自動保存される。Playwright実機で再現確認済み（マーカーのlinear-gradientスパン14個→20個に増加）。
+- データ消失ではないが意図しない書式のサイレント適用であり、AGENTS.mdの「データ損失を防ぐエラーハンドリング」に準ずる領域として差し戻す。
+
+### 次回開始位置
+- developerに、`applyToSelectedBlocks`（`handleMarker`/`handleEmphasis`の共通処理）で対象ブロックが`summarizeUndo.blockId`と一致する場合に`summarizeUndo`をクリアする最小修正を依頼する。
+
+---
+
 ## 2026-08-06 T-005: Reviewer指摘（Medium 2件）の修正対応
 
 ### 実施内容
