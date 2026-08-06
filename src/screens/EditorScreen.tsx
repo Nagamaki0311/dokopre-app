@@ -6,6 +6,7 @@ import { genId } from '../layout/id';
 import { parseText, blocksToText, blocksToTextWithRanges, mergeBlocks } from '../layout/parse';
 import { layoutSlide } from '../layout/layout';
 import { createCanvasMeasurer } from '../layout/measure';
+import { summarize, readability } from '../layout/assist';
 import { exportSlideAsPng, downloadBlob } from '../export/exportPng';
 import { useFontsReady } from '../hooks/useFontsReady';
 import { SlideView } from '../render/SlideView';
@@ -18,8 +19,17 @@ type Props = {
   back: () => void;
 };
 
-const TEMPLATE_CYCLE: (TemplateId | 'auto')[] = ['auto', 'title', 'statement', 'bullets', 'twoColumn', 'imageSide'];
+const TEMPLATE_CHOICES: { id: TemplateId | 'auto'; label: string }[] = [
+  { id: 'auto', label: '自動' },
+  { id: 'title', label: 'タイトル' },
+  { id: 'statement', label: '主張' },
+  { id: 'bullets', label: '箇条書き' },
+  { id: 'twoColumn', label: '2カラム' },
+  { id: 'imageSide', label: '画像＋文章' },
+];
 const MARKER_CYCLE: MarkerColor[] = ['yellow', 'pink', 'blue'];
+const SUMMARIZE_RATIO = 0.6;
+const SUMMARIZE_MIN_CHARS = 20;
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -47,6 +57,8 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [exportingPng, setExportingPng] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [warningSheetOpen, setWarningSheetOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fontsReady = useFontsReady();
@@ -82,6 +94,11 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     if (!currentSlide || !fontsReady) return null;
     return layoutSlide(currentSlide, measurer);
   }, [currentSlide, fontsReady, measurer]);
+
+  const readabilityResult = useMemo(() => {
+    if (!currentSlide) return null;
+    return readability(currentSlide);
+  }, [currentSlide]);
 
   function commitDeck(next: Deck) {
     const updated = { ...next, updatedAt: new Date().toISOString() };
@@ -144,12 +161,31 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     });
   }
 
-  function handleCycleTemplate() {
+  function handleSelectTemplate(next: TemplateId | 'auto') {
     if (!deck || !currentSlide) return;
-    const idx = TEMPLATE_CYCLE.indexOf(currentSlide.layoutHint);
-    const next = TEMPLATE_CYCLE[(idx + 1) % TEMPLATE_CYCLE.length];
     const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, layoutHint: next } : s));
     commitDeck({ ...deck, slides });
+    setTemplatePickerOpen(false);
+  }
+
+  function handleSummarizeBlock(blockId: string) {
+    if (!deck || !currentSlide) return;
+    const block = currentSlide.blocks.find((b) => b.id === blockId);
+    if (!block || block.type === 'image') return;
+    const maxChars = Math.max(SUMMARIZE_MIN_CHARS, Math.floor(block.text.length * SUMMARIZE_RATIO));
+    const summarized = summarize(block.text, maxChars);
+    if (!summarized || summarized === block.text) {
+      window.alert('これ以上要約できませんでした。');
+      return;
+    }
+    const confirmed = window.confirm(
+      `本文を要約して短くします（元に戻せません）。\n\n【要約後】\n${summarized}`,
+    );
+    if (!confirmed) return;
+    const blocks = currentSlide.blocks.map((b) => (b.id === blockId ? { ...b, text: summarized } : b));
+    updateSlideBlocks(slideIndex, blocks);
+    setRawText(blocksToText(blocks));
+    setWarningSheetOpen(false);
   }
 
   async function handleAddImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -257,7 +293,9 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
           <>
             <SlideView result={layout} assets={Object.values(assetsCache)} blocks={currentSlide.blocks} width={Math.min(560, window.innerWidth - 32)} />
             {layout.warnings.length > 0 && (
-              <div className="editor__warning-badge">⚠ {layout.warnings[0].message}</div>
+              <button className="editor__warning-badge" onClick={() => setWarningSheetOpen(true)}>
+                ⚠ {layout.warnings[0].message}
+              </button>
             )}
           </>
         )}
@@ -299,8 +337,8 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
         <button className="editor__tool" onClick={handleEmphasis}>
           強調
         </button>
-        <button className="editor__tool" onClick={handleCycleTemplate}>
-          レイアウト: {currentSlide.layoutHint}
+        <button className="editor__tool" onClick={() => setTemplatePickerOpen(true)}>
+          レイアウト: {TEMPLATE_CHOICES.find((t) => t.id === currentSlide.layoutHint)?.label ?? currentSlide.layoutHint}
         </button>
         <button className={`editor__tool${notesOpen ? ' editor__tool--active' : ''}`} onClick={() => setNotesOpen((v) => !v)}>
           メモ
@@ -337,7 +375,88 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
           ＋
         </button>
       </div>
+
+      {templatePickerOpen && (
+        <div className="sheet-backdrop" onClick={() => setTemplatePickerOpen(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="sheet__heading">レイアウト候補</p>
+            <div className="template-picker">
+              {TEMPLATE_CHOICES.map((choice) => (
+                <TemplateCandidate
+                  key={choice.id}
+                  label={choice.label}
+                  slide={currentSlide}
+                  templateId={choice.id}
+                  active={currentSlide.layoutHint === choice.id}
+                  measurer={measurer}
+                  onSelect={() => handleSelectTemplate(choice.id)}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {warningSheetOpen && layout && layout.warnings.length > 0 && (
+        <div className="sheet-backdrop" onClick={() => setWarningSheetOpen(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <p className="sheet__heading">改善の提案</p>
+            {layout.warnings.map((w, i) => (
+              <p key={i} className="sheet__note">
+                ⚠ {w.message}
+              </p>
+            ))}
+            {readabilityResult && (
+              <>
+                <p className="sheet__note">読みやすさスコア: {readabilityResult.score} / 100</p>
+                {readabilityResult.hints.map((hint, i) => (
+                  <p key={i} className="sheet__note">
+                    ・{hint}
+                  </p>
+                ))}
+              </>
+            )}
+            {layout.warnings[0].blockId && (
+              <button
+                className="sheet__item"
+                onClick={() => handleSummarizeBlock(layout.warnings[0].blockId as string)}
+              >
+                要約して縮める
+              </button>
+            )}
+            <button className="sheet__item" onClick={() => setWarningSheetOpen(false)}>
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function TemplateCandidate({
+  label,
+  slide,
+  templateId,
+  active,
+  measurer,
+  onSelect,
+}: {
+  label: string;
+  slide: Slide;
+  templateId: TemplateId | 'auto';
+  active: boolean;
+  measurer: ReturnType<typeof createCanvasMeasurer>;
+  onSelect: () => void;
+}) {
+  const previewSlide = useMemo(() => ({ ...slide, layoutHint: templateId }), [slide, templateId]);
+  const layout = useMemo(() => layoutSlide(previewSlide, measurer), [previewSlide, measurer]);
+
+  return (
+    <button className={`template-picker__item${active ? ' template-picker__item--active' : ''}`} onClick={onSelect}>
+      <SlideView result={layout} assets={[]} blocks={slide.blocks} width={120} />
+      <span className="template-picker__label">{label}</span>
+    </button>
   );
 }
 
