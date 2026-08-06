@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Deck } from '../types';
 import { createDeck } from '../deckFactory';
 import { deleteDeck, exportDeckJson, importDeckJson, listDecks, saveDeck } from '../storage/deckRepo';
 import { genId } from '../layout/id';
 import { layoutSlide } from '../layout/layout';
 import { createCanvasMeasurer } from '../layout/measure';
+import { exportDeckAsPdf } from '../export/exportPdf';
+import { downloadBlob } from '../export/exportPng';
 import { SlideView } from '../render/SlideView';
 import { useLongPress } from '../ui/gestures';
 import type { ScreenState } from '../hooks/useScreen';
@@ -45,7 +47,9 @@ function DeckCard({ deck, onOpen, onLongPress }: { deck: Deck; onOpen: () => voi
 export function HomeScreen({ navigate }: Props) {
   const [decks, setDecks] = useState<Deck[]>([]);
   const [sheetDeck, setSheetDeck] = useState<Deck | null>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const measurer = useMemo(() => createCanvasMeasurer(), []);
 
   const refresh = () => {
     listDecks().then(setDecks);
@@ -91,6 +95,21 @@ export function HomeScreen({ navigate }: Props) {
     a.click();
     URL.revokeObjectURL(url);
     setSheetDeck(null);
+  };
+
+  const handleExportPdf = async (deck: Deck) => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      const blob = await exportDeckAsPdf(deck, measurer);
+      downloadBlob(blob, `${deck.title || 'deck'}.pdf`);
+      setSheetDeck(null);
+    } catch (err) {
+      console.error('PDFの書き出しに失敗しました', err);
+      alert('PDFの書き出しに失敗しました。もう一度お試しください。');
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,13 +158,16 @@ export function HomeScreen({ navigate }: Props) {
       </button>
 
       {sheetDeck && (
-        <div className="sheet-backdrop" onClick={() => setSheetDeck(null)}>
+        <div className="sheet-backdrop" onClick={() => !exportingPdf && setSheetDeck(null)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <button className="sheet__item" onClick={() => handleDuplicate(sheetDeck)}>
               複製
             </button>
             <button className="sheet__item" onClick={() => handleExport(sheetDeck)}>
               JSON書き出し
+            </button>
+            <button className="sheet__item" disabled={exportingPdf} onClick={() => handleExportPdf(sheetDeck)}>
+              {exportingPdf ? 'PDF書き出し中…' : 'PDF書き出し'}
             </button>
             <button className="sheet__item sheet__item--danger" onClick={() => handleDelete(sheetDeck)}>
               削除

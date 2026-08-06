@@ -19,6 +19,29 @@
 
 ---
 
+## 2026-08-06 T-004: Phase 2 (PNG/PDF出力) 実装
+
+### 実施内容
+- `src/render/canvasRenderer.ts`を新規実装した。`drawLayout(ctx, result, assets, blocks)`は`LayoutResult`の`boxes`をそのまま描画するだけで、フォントサイズ決定・配置・テンプレート選択等のレイアウト判断は一切行わない（D-002遵守）。テキストは`SlideView.tsx`と同じ`fontSize`/`lineHeight`/`weight`/`align`を使い、マーカーは行下部40%（`linear-gradient(transparent 60%, color 60%)`相当）をハイライトし、画像は`object-fit: cover`相当のソース矩形計算（`drawImageCover`）でdrawImageする。
+- `src/export/exportPng.ts`: `exportSlideAsPng(slide, assets, measurer)`はオフスクリーンCanvas(1280x720)に`layoutSlide`→`drawLayout`し`canvas.toBlob('image/png')`でBlobを返す。呼び出し側での`document.fonts.ready`待機漏れを防ぐため、関数内でも`document.fonts.ready`を待つ（EditorScreen経由でもHomeScreenのPDF経由でも安全）。`downloadBlob(blob, filename)`で`<a download>`+Blob URLのダウンロードトリガーを実装。
+- `src/export/exportPdf.ts`: 新規依存`pdf-lib`（^1.17.1、Manager承認済み）を追加。`exportDeckAsPdf(deck, measurer)`はデッキの各スライドを`exportSlideAsPng`でPNG化し（レイアウト判断ロジックの再実装なし）、`pdf-lib`で1280x720ページに1枚ずつ`embedPng`+`drawImage`して1つのPDFにまとめる。画像アセットはメタデータのみのデッキから`getAsset`で本体データを取得する（`exportDeckJson`と同じパターン）。
+- UI統合: `HomeScreen.tsx`のデッキ長押しボトムシートに「PDF書き出し」ボタンを追加（書き出し中は「PDF書き出し中…」表示・ボタン無効化・背景タップでの閉じ操作も無効化して不整合を防止）。`EditorScreen.tsx`のツールバーに「PNG保存」ボタンを追加（書き出し中は「PNG保存中…」表示）。失敗時はいずれも`window.alert`で日本語メッセージを表示。
+
+### 結果
+- `npm test`: 14 passed（既存のまま。CanvasやPDF生成はjsdom+canvas未導入のため、vitestでのBlob生成テストは追加せずPlaywrightでの実機能確認に置き換えた）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。`pdf.save()`の戻り値`Uint8Array`を`Blob`に渡す際、`ArrayBufferLike`と`ArrayBuffer`の型不一致でtsc エラーが出たため`bytes.slice().buffer`で正規化した。
+- Playwright（`/opt/pw-browsers`のChromium、`npm run preview`起動後）で以下を確認した。
+  1. 編集画面で2行+箇条書きのスライドを作成し「PNG保存」→ダウンロードされたファイルがPNGシグネチャ(`89 50 4E 47 0D 0A 1A 0A`)で始まることを確認。目視でDOMプレビューと同一の見た目（見出し太字+箇条書き）であることを確認。
+  2. 2枚のスライドを持つデッキをホーム画面から長押し→「PDF書き出し」→ダウンロードされたPDFを`pdf-lib`の`PDFDocument.load`で読み込み、`getPageCount()`が2、各ページサイズが1280x720であることを確認。
+  3. マーカー(yellow)+自動強調（キーワード「結論」）を含むスライドをPNG化し、DOMプレビューのスクリーンショットと目視比較。マーカーハイライトの位置・太字強調・twoColumnテンプレートの配置が一致することを確認。
+  4. 画像を追加したスライド（imageSideテンプレート）をPNG化し、`object-fit: cover`による画像のクロップ位置がDOMプレビューと一致することを確認。
+
+### 次回開始位置
+- T-004を「レビュー中」とした。reviewerにレイアウト判断ロジックの二重実装がないか（`canvasRenderer.ts`/`exportPng.ts`/`exportPdf.ts`が`layoutSlide`の出力を描画するだけであること）を中心にレビューを依頼する。
+- 承認後はT-005（Phase 3: AI補助の高度化）に着手する。
+
+---
+
 ## 2026-08-06 T-003: 再レビュー承認・完了
 
 ### 実施内容

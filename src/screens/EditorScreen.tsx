@@ -6,6 +6,7 @@ import { genId } from '../layout/id';
 import { parseText, blocksToText, blocksToTextWithRanges, mergeBlocks } from '../layout/parse';
 import { layoutSlide } from '../layout/layout';
 import { createCanvasMeasurer } from '../layout/measure';
+import { exportSlideAsPng, downloadBlob } from '../export/exportPng';
 import { useFontsReady } from '../hooks/useFontsReady';
 import { SlideView } from '../render/SlideView';
 import { useSwipe, useLongPress } from '../ui/gestures';
@@ -45,6 +46,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
   const [assetsCache, setAssetsCache] = useState<Record<string, Asset>>({});
   const [notesOpen, setNotesOpen] = useState(false);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [exportingPng, setExportingPng] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fontsReady = useFontsReady();
@@ -184,6 +186,20 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     updateSlideBlocks(slideIndex, blocks);
   }
 
+  async function handleExportPng() {
+    if (!currentSlide || exportingPng) return;
+    setExportingPng(true);
+    try {
+      const blob = await exportSlideAsPng(currentSlide, Object.values(assetsCache), measurer);
+      downloadBlob(blob, `${deck?.title || 'slide'}-${slideIndex + 1}.png`);
+    } catch (err) {
+      console.error('PNGの保存に失敗しました', err);
+      window.alert('PNGの保存に失敗しました。もう一度お試しください。');
+    } finally {
+      setExportingPng(false);
+    }
+  }
+
   function handleNotesChange(value: string) {
     if (!deck || !currentSlide) return;
     const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, notes: value } : s));
@@ -291,6 +307,9 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
         </button>
         <button className="editor__tool" onClick={() => navigate({ name: 'present', deckId: deck.id, index: slideIndex })}>
           ▶ 発表
+        </button>
+        <button className="editor__tool" disabled={exportingPng} onClick={handleExportPng}>
+          {exportingPng ? 'PNG保存中…' : 'PNG保存'}
         </button>
       </div>
 
