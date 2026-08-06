@@ -35,11 +35,21 @@ export async function exportSlideAsPng(slide: Slide, assets: Asset[], measurer: 
 }
 
 /**
+ * ファイル名として不正な文字（デッキタイトル等の自由入力に由来しうる）を`_`に置換する。
+ * Android実機では`Filesystem.writeFile`の`path`が実ファイルシステムパスとして解釈されるため、
+ * `/`等を含むタイトルだとネイティブ保存が静かに失敗しうる（Web版の`<a download>`は単なる"suggested filename"のため影響しない）。
+ */
+export function sanitizeFilename(filename: string): string {
+  return filename.replace(/[/\\:*?"<>|]/g, '_');
+}
+
+/**
  * Blob をファイルとして保存する。
  * Android(Capacitorネイティブ)ではFilesystemにキャッシュ書き込み後、Shareシートで保存/共有させる。
  * Web版では既存の`<a download>` + Blob URLのままとする（フォールバックを壊さない）。
  */
-export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
+export async function downloadBlob(blob: Blob, rawFilename: string): Promise<void> {
+  const filename = sanitizeFilename(rawFilename);
   if (Capacitor.isNativePlatform()) {
     try {
       const base64 = await blobToBase64(blob);

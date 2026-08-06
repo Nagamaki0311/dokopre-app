@@ -19,6 +19,27 @@
 
 ---
 
+## 2026-08-06 T-006: Reviewer指摘（ファイル名未サニタイズ）の修正
+
+### 実施内容
+- `src/export/exportPng.ts`に`sanitizeFilename(filename: string): string`を追加し、`/ \ : * ? " < > |`をすべて`_`に置換するようにした。`downloadBlob`の冒頭で受け取った`rawFilename`をこの関数に通してから使用するよう変更し、呼び出し元（`EditorScreen.tsx`のPNG保存、`HomeScreen.tsx`のPDF書き出し）は変更していない（1箇所への集約というレビュー指摘の修正方針通り）。
+- `src/export/exportPng.test.ts`を新規作成し、`sanitizeFilename`が`/`等の不正文字を`_`に置換すること、不正文字を含まない場合はそのまま返すことを検証するユニットテスト2件を追加した。
+
+### 結果
+- `npm test`: 21 passed（既存19件+新規2件、回帰なし）。
+- `npm run build`: 型エラーなく成功。
+- Playwright（`npm run preview`起動、`/opt/node22/lib/node_modules/playwright`のChromium）で実機相当の確認を実施。
+  - タイトルを`Q3/Q4実績`としたデッキでPNG保存を実行し、`HTMLAnchorElement.prototype.click`をフックして実際に設定された`a.download`属性値を捕捉したところ`Q3_Q4実績-1.png`（サニタイズ済み）だった。
+  - 同デッキでPDF書き出しを実行し、同様に`a.download`属性値が`Q3_Q4実績.pdf`（サニタイズ済み）だった。
+  - `download.suggestedFilename()`はBlob URLダウンロードでは常に`download`固定文字列を返す（Chromiumの既知挙動）ため検証には使えず、`a.download`属性値を直接捕捉する方式で確認した。
+  - いずれの操作でも`pageerror`は発生しなかった。
+- Web版のフォールバック経路（`Capacitor.isNativePlatform()`がfalseの場合の`<a download>`）で検証しており、ネイティブ実機でのFilesystem/Share経路は引き続き未検証（T-006全体の既存の制約と同じ）。
+
+### 次回開始位置
+- T-006を「レビュー中」に戻した。reviewerに、`sanitizeFilename`の実装がMedium指摘の修正方針（1箇所への集約、シンプルな正規表現置換）に沿っているか、既存のWeb版フォールバック動作を壊していないかを中心に再レビューを依頼する。
+
+---
+
 ## 2026-08-06 T-006: Reviewerによる敵対的検証（差し戻し）
 
 ### 実施内容
