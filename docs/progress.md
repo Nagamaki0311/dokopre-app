@@ -19,6 +19,23 @@
 
 ---
 
+## 2026-08-06 T-003: Reviewerによる敵対的検証（差し戻し）
+
+### 実施内容
+- reviewerにcommit `7997d21`のレビューを委任した。`npm test`/`npm run build`を再実行して成功を確認した上で、以下を指摘した。
+  1. **Critical/CONFIRMED**: `importDeckJson`（`src/storage/deckRepo.ts`）がトップレベルの`schemaVersion`/`id`/`slides`/`assets`の型のみ検証し、`Slide.blocks`の存在・型を検証していない。`blocks`欠落デッキを読み込むと`layoutSlide`→`analyze`の`blocks.map`が`TypeError`を投げ、ErrorBoundary不在のためホーム画面ごとクラッシュし続ける（復旧手段なし）。
+  2. **Medium/PLAUSIBLE**: JSONインポート時、既存デッキと同一`id`が無警告で上書きされる（データ損失）。
+  3. **Medium/CONFIRMED**: `ImageBlock.alt`が型定義上あるが、EditorScreenは常に空文字で生成しUIもなく、`SlideView.tsx`のレンダリングも`block.alt`を参照せず`alt=""`固定（アクセシビリティ欠陥）。
+  4. **Low/CONFIRMED**: 画像追加時、非画像ファイル選択でPromise rejectがtry/catchされずunhandled rejectionになる。
+  5. **Low/CONFIRMED**: `importDeckJson`の`assets`配列要素の型検証不足（null要素で生のTypeError）。
+  6. Low/PLAUSIBLE（`mergeBlocks`のマーカー引き継ぎ誤り）とNit（行末禁則未対応）はMVPとして許容し、既知の制約として記録するに留める。
+- T-003を「実装中」に差し戻し、1〜5をdeveloperへ修正依頼する。
+
+### 次回開始位置
+- developerに1〜5の修正を依頼する。特に1（Critical）は`importDeckJson`でのSlide/Block構造検証の追加、およびApp.tsxへのErrorBoundary追加の両面対応が必要。
+
+---
+
 ## 2026-08-06 T-003: Phase 1 (MVP) 実装
 
 ### 実施内容

@@ -17,7 +17,7 @@
 |----|--------|--------|------|------------------|------|
 | T-001 | project001テンプレートからdokopre-app用への初期化（docs/tasks・progress・decisionsリセット） | 高 | 完了 | claude | README.mdの初期化手順に従いdocs 3ファイルをリセット。/init-projectコマンドとREADME該当節はテンプレート専用のため削除（本リポジトリはアプリ本体として運用するため） |
 | T-002 | 「どこでもプレゼン」要件定義・画面遷移・アーキテクチャ・データ構造の計画作成 | 高 | 完了 | planner | Web(React+TS+Vite)+Capacitor採用、自動レイアウトエンジンをレンダラ非依存の純粋関数として設計（D-001/D-002参照） |
-| T-003 | Phase 1 (MVP): プロジェクト初期化・自動レイアウトエンジン・3画面・ローカル保存 | 高 | レビュー中 | developer | 自動レイアウト→編集→発表→再読込しても残る、が動く最小構成を実装。npm test/npm run build成功、Playwrightで完了条件1〜6を確認済み。詳細はprogress.md参照 |
+| T-003 | Phase 1 (MVP): プロジェクト初期化・自動レイアウトエンジン・3画面・ローカル保存 | 高 | 実装中 | developer | Reviewer指摘によりCriticalの差し戻し中（importDeckJsonのSlide/Block検証不足でクラッシュ、alt属性未実装等）。詳細はprogress.md参照 |
 | T-004 | Phase 2: PNG/PDF出力 | 中 | 未着手 | developer | Canvasレンダラは`LayoutResult`を共有しレイアウト判断を二重実装しない（D-002） |
 | T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 未着手 | developer | ルールベース/ローカル処理のみ（外部LLM API不使用、D-002） |
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 未着手 | developer | Android SDK未導入のためdebug APKビルド成功＋手順書を完了条件とし実機確認はUser側 |
