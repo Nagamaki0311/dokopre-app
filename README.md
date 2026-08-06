@@ -1,25 +1,12 @@
-# project001
+# どこでもプレゼン (dokopre-app)
 
-Claude CodeによるAI開発OS。新規アプリ開発に共通する開発方針・タスク管理・レビュー手順をテンプレートとして提供する。
+「思いついたら30秒でプレゼン資料を作れる」を実現する、スマートフォン特化のプレゼンテーションアプリ。PowerPointやGoogleスライドの縮小版ではなく、入力内容から情報構造を解析して視認性の高いレイアウトを自動生成する「自動レイアウト」を最大の特徴とする。開発は[project001](https://github.com/)由来のAI開発フロー（AGENTS.md）に従う。
 
 ## セットアップ
 
 1. `git clone`等でこのリポジトリを取得する。
-2. （任意）`bash .claude/bootstrap.sh`を実行し、Optional Dependency（Agent-Reach/Code Review Graph/Context7/GitHub CLI等）の導入状況を確認する。インストールは行わず案内のみを表示するため、実行しなくてもproject001は完全に動作する。
+2. （任意）`bash .claude/bootstrap.sh`を実行し、Optional Dependency（Agent-Reach/Code Review Graph/Context7/GitHub CLI等）の導入状況を確認する。インストールは行わず案内のみを表示するため、実行しなくても本リポジトリは完全に動作する。
 3. AGENTS.mdの開発フロー（User → Manager → Planner → Developer → Reviewer → Manager → Complete）に従って進める。
-
-## 使い方
-
-新規アプリを開発する場合、このリポジトリをコピーして雛形として使う。個別アプリの仕様・実装コードはproject001自体には追加しない。以降はAGENTS.mdの開発フローに従って進める。
-
-### 新規プロジェクトでの初期化
-
-`/init-project`コマンド（`.claude/commands/init-project.md`）を実行するか、以下の手順を直接行う。コピー直後にこの手順を行わないと、新規プロジェクトのSessionStart Hookがproject001自身の構築履歴を表示し続けてしまう。docs/のうちtasks.md/progress.md/decisions.mdの3つのみをリセットする。
-
-- `docs/tasks.md`: 「## タスク一覧」表のヘッダ行と区切り行は残し、`T-xxx`の行をすべて削除する。「## バックログ」の既存項目もすべて削除する。列構成は変えない（SessionStart Hookが状態列の値でフィルタするため）。
-- `docs/progress.md`: 「## 記録フォーマット」直後の`---`（この行を含む）より下をすべて削除する。
-- `docs/decisions.md`: 同様に`---`（この行を含む）より下のD-xxxをすべて削除する。
-- `README.md`: プロジェクト名・概要を書き換える。本節「### 新規プロジェクトでの初期化」自体は削除してよい。
 
 ## 構成
 
@@ -41,9 +28,6 @@ Claude CodeによるAI開発OS。新規アプリ開発に共通する開発方�
 - .claude/bootstrap.sh
   - Optional Dependency（Capability Layer）の導入状況を案内のみで表示する検出スクリプト。インストールは行わない
 
-- .claude/commands/init-project.md
-  - `/init-project`コマンド。新規プロジェクトでの初期化手順（本READMEの該当節）を実行する
-
 - docs
   - tasks.md: タスクと状態管理
   - progress.md: 作業履歴
@@ -55,6 +39,13 @@ Claude CodeによるAI開発OS。新規アプリ開発に共通する開発方�
   - capability-layer.md: 外部ツール検出の共通規約（Capability Layer）
   - research-workflow.md: 外部調査ワークフロー
   - status-line.md: サブエージェント進捗の可視化（Status Line）の仕様
+  - requirements.md: 「どこでもプレゼン」の要件定義
+  - screens.md: 画面遷移図・ワイヤーフレーム概要
+  - design.md: UIデザイン仕様（デザイントークン等）
+  - architecture.md: アーキテクチャ設計（レイアウトエンジン・二重レンダラ・永続化・Capacitor構成）
+  - data-schema.md: データ構造（Deck/Slide/Block/Asset/LayoutResult）
+  - build-android.md: APKビルド手順（この開発コンテナでの実施結果を含む）
+  - operations.md: 運用・拡張ガイド（テンプレート追加・AI補助拡張・既知の制約）
 
 ## 開発フロー
 
