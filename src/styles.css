@@ -22,6 +22,11 @@
   --radius-lg: 20px;
 
   --font-sans: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
 * {
@@ -106,6 +111,9 @@ button {
   flex-direction: column;
   height: 100%;
   padding: var(--sp-4);
+  padding-top: calc(var(--sp-4) + var(--safe-top));
+  padding-left: calc(var(--sp-4) + var(--safe-left));
+  padding-right: calc(var(--sp-4) + var(--safe-right));
   gap: var(--sp-3);
 }
 
@@ -136,7 +144,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: var(--sp-3);
-  padding-bottom: 96px;
+  padding-bottom: calc(96px + var(--safe-bottom));
 }
 
 .home__empty {
@@ -187,8 +195,8 @@ button {
 
 .fab {
   position: fixed;
-  right: var(--sp-4);
-  bottom: var(--sp-4);
+  right: calc(var(--sp-4) + var(--safe-right));
+  bottom: calc(var(--sp-4) + var(--safe-bottom));
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -214,6 +222,9 @@ button {
   background: var(--bg);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   padding: var(--sp-4);
+  padding-bottom: calc(var(--sp-4) + var(--safe-bottom));
+  padding-left: calc(var(--sp-4) + var(--safe-left));
+  padding-right: calc(var(--sp-4) + var(--safe-right));
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
@@ -290,6 +301,9 @@ button {
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
+  padding-top: calc(var(--sp-2) + var(--safe-top));
+  padding-left: calc(var(--sp-3) + var(--safe-left));
+  padding-right: calc(var(--sp-3) + var(--safe-right));
   border-bottom: 1px solid var(--border);
 }
 
@@ -400,6 +414,9 @@ button {
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
+  padding-bottom: calc(var(--sp-2) + var(--safe-bottom));
+  padding-left: calc(var(--sp-3) + var(--safe-left));
+  padding-right: calc(var(--sp-3) + var(--safe-right));
   overflow-x: auto;
 }
 
@@ -474,6 +491,18 @@ button {
   align-items: center;
   padding: var(--sp-3);
   pointer-events: auto;
+}
+
+.present__top {
+  padding-top: calc(var(--sp-3) + var(--safe-top));
+  padding-left: calc(var(--sp-3) + var(--safe-left));
+  padding-right: calc(var(--sp-3) + var(--safe-right));
+}
+
+.present__bottom {
+  padding-bottom: calc(var(--sp-3) + var(--safe-bottom));
+  padding-left: calc(var(--sp-3) + var(--safe-left));
+  padding-right: calc(var(--sp-3) + var(--safe-right));
 }
 
 .present__exit {

@@ -19,6 +19,28 @@
 
 ---
 
+## 2026-08-07 T-007: セーフエリア対応の実装
+
+### 実施内容
+- `src/styles.css`の`:root`に`--safe-top`/`--safe-bottom`/`--safe-left`/`--safe-right`（それぞれ`env(safe-area-inset-*, 0px)`）を追加した。
+- 画面端に固定表示される要素へ、既存の`padding`に`calc()`でセーフエリア変数を加算する形で適用した（個別画面ごとの重複を避け、共通クラス単位で一括対応）。
+  - `.home`（左右+上）、`.home__list`（下、FABと重ならないための既存96pxに加算）、`.fab`（右+下）
+  - `.sheet`（下+左右）: `EditorScreen`のレイアウト候補シート・警告シート、`HomeScreen`のデッキ操作シートが共通で使用しているため、この1箇所の修正で全ボトムシートに反映される
+  - `.editor__header`（上+左右）、`.editor__filmstrip`（下+左右、エディタ最下部の要素）
+  - `.present__top`（上+左右）、`.present__bottom`（下+左右）: プレゼン全画面表示中はUI要素が非表示になるため、表示時のみ影響する
+- `editor__undo-bar`・`editor__toolbar`は画面端に接していない中間要素のため対象外とした（判定ラダーに沿い過剰な適用を避けた）。
+
+### 結果
+- `npm test`: 21 passed（回帰なし）。
+- `npm run build`: 型エラーなく成功。`grep -o "env(safe-area-inset-[a-z]*" dist/assets/*.css`でtop/bottom/left/rightすべてが出力に含まれることを確認した。
+- 実機・エミュレータがこの開発コンテナにないため直接の視覚確認は未実施（Chrome DevToolsのデバイスエミュレーションでの`env()`疑似確認も本コンテナのPlaywright/Chromiumでは`env()`の実機シミュレーションができないため実施していない）。CSSの`calc()`構文と対象クラスの適用範囲はコードレビューで妥当性を判断する。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`（`android/local.properties`は`sdk.dir=/opt/android-sdk`設定済みのため変更不要）を実行し`BUILD SUCCESSFUL`（49秒、184 actionable tasks、27実行/157 up-to-date）。生成物`android/app/build/outputs/apk/debug/app-debug.apk`（約24.5MB）を確認した。
+
+### 次回開始位置
+- reviewerに、セーフエリア適用箇所の妥当性（適用漏れ・過剰適用の両面）と、実機未検証である旨を踏まえたレビューを依頼する。承認後、Userに実機での再確認を依頼する。
+
+---
+
 ## 2026-08-07 T-007: Android実機確認でシステムバー干渉を発見
 
 ### 実施内容
