@@ -22,6 +22,7 @@
 | T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 完了 | developer/reviewer | 3回の指摘サイクル（改行破壊/Undo欠如/Undoとマーカー競合）を経てCritical/High/Medium指摘なしを確認 |
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 完了 | developer/reviewer | debug APKビルド成功、納品docs一式作成。Reviewer指摘のファイル名サニタイズ修正後、Critical/High/Medium指摘なしで承認。Phase 1〜4すべて完了 |
 | T-007 | Android実機でのシステムバー（時刻表示・戻る/ホームボタン）とUIの重なりを解消 | 高 | 完了 | developer/reviewer | `env(safe-area-inset-*)`をヘッダー/ボトムシート/フィルムストリップ/Present上下バーに適用。Reviewer検証で指摘なし。User実機での最終確認待ち |
+| T-008 | Editor画面下部ツールバーがAndroid実機で潰れる不具合を解消 | 高 | 実装中 | developer | T-007のセーフエリア対応でfilmstripの高さが増えた結果、preview42%+text38%固定のflexboxで残り領域が不足しツールバーが縮んで表示される。User実機確認（スクリーンショット）で発覚 |
 
 ## バックログ（未着手・優先度未確定）
 

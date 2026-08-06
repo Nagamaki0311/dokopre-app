@@ -19,6 +19,17 @@
 
 ---
 
+## 2026-08-07 T-008: Editor画面ツールバー潰れを発見
+
+### 実施内容
+- Userが実機で再確認したところ、Editor画面下部のツールバー（マーカー/強調等のボタン列）が潰れて表示される不具合が新たに発覚した（スクリーンショット添付）。
+- 原因調査: `src/styles.css`の`.editor`は`height: 100%`のflexbox（column）で、`.editor__preview`が`flex: 0 0 42%`、`.editor__text`が`flex: 0 0 38%`と固定比率のため、残り約20%弱（ヘッダー分を除く）を`.editor__toolbar`・`.editor__filmstrip`（デフォルトのflex-shrink: 1）が分け合う構造になっている。T-007で`.editor__filmstrip`に`padding-bottom: calc(var(--sp-2) + var(--safe-bottom))`を追加したことで、フィルムストリップが必要とする高さが増え、残り領域に収まらずtoolbar/filmstripがflexboxにより縮められ、ツールバーのボタン列が潰れて表示されている。
+
+### 次回開始位置
+- developerに、`.editor__header`・`.editor__toolbar`・`.editor__filmstrip`（・`.editor__undo-bar`）に`flex-shrink: 0`を付与して縮まないようにし、代わりに`.editor__preview`・`.editor__text`を固定%からflex-growベースの可変サイズ（残りスペースを埋める）に変更する修正を依頼する。
+
+---
+
 ## 2026-08-07 T-007: レビュー承認・完了
 
 ### 実施内容
