@@ -19,6 +19,29 @@
 
 ---
 
+## 2026-08-07 T-008: Editor画面ツールバー潰れの修正
+
+### 実施内容
+- `src/styles.css`の`.editor`配下のレイアウトを、「ヘッダー・ツールバー・フィルムストリップ・undo-barは常に必要な高さを確保し、プレビューとテキスト入力欄が残りのスペースを分け合う」構造に変更した。
+  - `.editor__header`・`.editor__toolbar`・`.editor__filmstrip`・`.editor__undo-bar`に`flex-shrink: 0`を追加。
+  - `.editor__preview`を`flex: 0 0 42%`から`flex: 42 1 0%; min-height: 120px;`に変更。
+  - `.editor__text`を`flex: 0 0 38%`から`flex: 38 1 0%; min-height: 80px;`に変更。
+  - これにより、`.editor`全体の高さからヘッダー・ツールバー・フィルムストリップ・undo-barの実高さを差し引いた「残り」を、preview:textが42:38の比率で分け合う形になり、画面が小さい端末やセーフエリアが大きい端末でもツールバー等が潰れなくなる（代わりにpreview/textが少し縮む）。
+
+### 結果
+- `npm test`: 21 passed（回帰なし）。
+- `npm run build`: 型エラーなく成功。
+- Playwright（`vite preview`起動後にChromiumで検証、確認用スクリプトは一時ファイルとして作成・削除済み、リポジトリには残していない）で以下を確認した。
+  - 640×700・640×600のビューポートで`.editor__tool`の実高さが約29〜30pxあり潰れていない。
+  - `addStyleTag`で`--safe-bottom`を60px（640×600）・40px（320×560）に擬似的に上書きしても`.editor__tool`の高さは変わらず約29px維持（filmstripの高さのみ増加し、toolbarは影響を受けない）ことを確認。
+- `npx cap sync android` → `./gradlew assembleDebug --no-daemon`: BUILD SUCCESSFUL。
+- 実機での最終視覚確認は本コンテナ環境にないため未実施。Userに新しいdebug APKでの再確認を依頼する。
+
+### 次回開始位置
+- Reviewerによるレビュー（差分が設計原則・完了条件を満たすかの確認）。承認後、User実機での最終確認。
+
+---
+
 ## 2026-08-07 T-008: Editor画面ツールバー潰れを発見
 
 ### 実施内容
