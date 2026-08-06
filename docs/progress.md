@@ -19,6 +19,18 @@
 
 ---
 
+## 2026-08-06 T-006: Reviewerによる敵対的検証（差し戻し）
+
+### 実施内容
+- reviewerにcommit `41b6da7`のレビューを委任した。`npm test`/`npm run build`/`gradle assembleDebug --no-daemon`を独立に再実行しすべて成功を確認。Web版フォールバック、`.gitignore`変更、秘密情報混入、納品ドキュメントの正確性、依存追加の妥当性はいずれも問題なし。
+- Medium/PLAUSIBLE 1件を指摘: `src/export/exportPng.ts`の`downloadBlob`が、デッキタイトル（自由入力・バリデーションなし）をサニタイズせずファイル名として`Filesystem.writeFile`の`path`に渡している。Web版では`a.download`属性が単なる"suggested filename"のため問題にならないが、Android実機では`path`が実ファイルシステムパスとして解釈されるため、タイトルに`/`等を含むデッキでネイティブ保存が失敗し、かつWeb版と同じ`<a download>`フォールバックはAndroid WebViewでは機能しないため、ユーザーに何のエラーも表示されないまま保存・共有が静かに失敗する可能性がある。
+- 実機未検証のためPLAUSIBLE判定だが、修正コスト・リスクともに低いため差し戻す。
+
+### 次回開始位置
+- developerに、`downloadBlob`呼び出し前またはfilename生成箇所で、Androidのファイル名として不正な文字（少なくとも`/`、可能なら`\ : * ? " < > |`）を`_`等に置換するサニタイズの追加を依頼する。
+
+---
+
 ## 2026-08-06 T-006: Phase 4 (Capacitor Android化・APKビルド・納品ドキュメント一式) 実装
 
 ### 実施内容
