@@ -27,6 +27,13 @@ describe('summarize', () => {
       expect(originalSentences.some((o) => o.startsWith(s) || o === `${s}。`)).toBe(true);
     }
   });
+
+  it('(e) 実質的な短縮が不要な短い複数行テキストは改行構造を保持したまま返す', () => {
+    const text = '見出し\n・要点1\n・要点2';
+    const result = summarize(text, 300);
+    expect(result).toBe(text);
+    expect(result.split('\n').length).toBe(3);
+  });
 });
 
 describe('readability', () => {

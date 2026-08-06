@@ -336,6 +336,28 @@ button {
   text-align: left;
 }
 
+.editor__undo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: #fff4e0;
+  color: #8a5a00;
+  border-bottom: 1px solid #f0d9a8;
+  font-size: 13px;
+}
+
+.editor__undo-bar__button {
+  border: 1px solid #8a5a00;
+  background: transparent;
+  color: #8a5a00;
+  border-radius: var(--radius);
+  padding: 2px var(--sp-2);
+  font-size: 13px;
+  font-family: inherit;
+}
+
 .editor__text {
   flex: 0 0 38%;
   border: none;

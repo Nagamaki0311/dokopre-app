@@ -19,7 +19,7 @@
 | T-002 | 「どこでもプレゼン」要件定義・画面遷移・アーキテクチャ・データ構造の計画作成 | 高 | 完了 | planner | Web(React+TS+Vite)+Capacitor採用、自動レイアウトエンジンをレンダラ非依存の純粋関数として設計（D-001/D-002参照） |
 | T-003 | Phase 1 (MVP): プロジェクト初期化・自動レイアウトエンジン・3画面・ローカル保存 | 高 | 完了 | developer/reviewer | Reviewer再検証（意地悪なテストケース含む）で指摘事項の解消を確認、npm test 14件・npm run build成功 |
 | T-004 | Phase 2: PNG/PDF出力 | 中 | 完了 | developer/reviewer | Reviewer検証でCritical/High/Medium指摘なし。Low指摘2件（画像アセット欠落時のプレースホルダー未描画、PDFにテキストレイヤー/alt情報なし）は既知の制約として記録し許容 |
-| T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 実装中 | developer | Reviewer指摘によりMedium 2件（summarizeの改行破壊、要約操作にUndoがない）を差し戻し中。詳細はprogress.md参照 |
+| T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | レビュー中 | developer/reviewer | Reviewer指摘のMedium 2件（summarizeの改行破壊、要約操作にUndoがない）を修正済み。reviewerに再レビューを依頼中。詳細はprogress.md参照 |
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 未着手 | developer | Android SDK未導入のためdebug APKビルド成功＋手順書を完了条件とし実機確認はUser側 |
 
 ## バックログ（未着手・優先度未確定）

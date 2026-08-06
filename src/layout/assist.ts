@@ -79,7 +79,17 @@ export function summarize(text: string, maxChars: number): string {
     return top.slice(0, Math.max(0, maxChars));
   }
 
-  return sentences.filter((_, i) => chosen.has(i)).join('');
+  if (chosen.size === total) {
+    // 全文が選ばれた場合は実質的な短縮になっていない。文分割時に改行(\n)を句点(。)へ
+    // 置換して再結合すると改行構造が失われてしまうため、この場合は元テキストを
+    // そのまま返し、改行等の書式を破壊しない。
+    return text;
+  }
+
+  const summarized = sentences.filter((_, i) => chosen.has(i)).join('');
+  // 文の間引きを行っても文字数が短縮されなかった場合（短い文が多く含まれる等）も、
+  // 改行構造の破壊を避けるため元テキストをそのまま返す。
+  return summarized.length < text.length ? summarized : text;
 }
 
 export type ReadabilityResult = {

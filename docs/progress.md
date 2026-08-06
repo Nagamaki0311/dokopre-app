@@ -19,6 +19,29 @@
 
 ---
 
+## 2026-08-06 T-005: Reviewer指摘（Medium 2件）の修正対応
+
+### 実施内容
+- 直前のReviewer差し戻し（下記「Reviewerによる敵対的検証（差し戻し）」エントリ）の指摘1・2を修正した。
+  1. **Medium**: `src/layout/assist.ts`の`summarize`が、選ばれた文の集合が全文（`chosen.size === total`）だった場合、あるいは間引いても文字数が短縮されなかった場合（`summarized.length >= text.length`）に、句点置換・再結合した文字列ではなく元の`text`をそのまま返すガードを追加した。これにより実質的な短縮が不要な短い複数行ブロックでも改行構造(`\n`)が破壊されなくなり、`EditorScreen.tsx`の`handleSummarizeBlock`が既に持つ`summarized === block.text`判定（「これ以上要約できませんでした」アラート）が正しく機能するようになった。
+  2. **Medium**: `src/screens/EditorScreen.tsx`に要約適用の最小限Undoを追加した。`handleSummarizeBlock`で要約を確定する直前のブロックテキストを`summarizeUndo`state（`{slideId, blockId, previousText}`）に保持し、プレビュー上部に「要約を適用しました／元に戻す」バー（`.editor__undo-bar`）を表示する。「元に戻す」タップで`handleUndoSummarize`が該当ブロックのテキストを直前の値に復元し自動保存する。手動でテキストを編集した場合（`handleTextChange`）やスライドを切り替えた場合（`switchSlide`）は`summarizeUndo`をクリアし、無効な状態への復元を防いだ。全操作履歴のUndoスタック等の過剰な設計は行わず、直前1回分の復元のみに限定した（AGENTS.mdの判定ラダー通り最小実装）。`window.confirm`の文言から「元に戻せません」を削除した。
+  3. `src/layout/assist.test.ts`に「実質的な短縮が不要な短い複数行テキストは改行構造を保持したまま返す」テストケースを追加した（`summarize('見出し\n・要点1\n・要点2', 300)`が入力と完全一致し`\n`区切りの3行が保持されることを確認）。
+  4. `src/styles.css`に`.editor__undo-bar`/`.editor__undo-bar__button`を追加した。既存の警告バッジと同系色（`#fff4e0`背景・`#8a5a00`文字）に合わせ、新規デザイントークンは追加していない。
+
+### 結果
+- `npm test`（Vitest）: 19 passed（既存18件+新規1件）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。
+- Playwright（`/opt/pw-browsers`のChromium、`npm run preview`起動後）で以下を確認した。
+  1. 新規デッキで500文字超の長文（句点なし・繰り返しパターン）を入力し`too-much-text`警告バッジ→シート→「要約して縮める」を実行。テキストエリアの内容が376文字→229文字に短縮され`window.confirm`ダイアログが表示されることを確認。
+  2. 要約適用直後にプレビュー上部へ「要約を適用しました／元に戻す」バーが表示されることを確認。
+  3. 「元に戻す」をクリックすると、テキストエリアの内容（空行を除いた実質テキスト）が要約適用前の内容と一致することを確認。加えて「元に戻す」操作後にバーが消えることも確認した。
+  4. （ユニットテストで別途検証済みのため今回は割愛）`summarize`の改行保持ガードは`src/layout/assist.test.ts`のテスト(e)で確認。
+
+### 次回開始位置
+- T-005を「レビュー中」に戻した。reviewerに今回の修正（改行保持ガード・Undo実装が実際に機能するか、AGENTS.mdの最小実装の原則に沿っているか）を中心に再レビューを依頼する。承認後はT-006（Phase 4: Capacitor Android化）に着手する。
+
+---
+
 ## 2026-08-06 T-005: Reviewerによる敵対的検証（差し戻し）
 
 ### 実施内容

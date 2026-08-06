@@ -59,6 +59,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
   const [exportingPng, setExportingPng] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [warningSheetOpen, setWarningSheetOpen] = useState(false);
+  const [summarizeUndo, setSummarizeUndo] = useState<{ slideId: string; blockId: string; previousText: string } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fontsReady = useFontsReady();
@@ -117,6 +118,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const clamped = Math.max(0, Math.min(deck.slides.length - 1, index));
     setSlideIndex(clamped);
     setRawText(blocksToText(deck.slides[clamped]?.blocks ?? []));
+    setSummarizeUndo(null);
   }
 
   const previewSwipe = useSwipe({
@@ -130,6 +132,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const parsed = parseText(value);
     const merged = mergeBlocks(currentSlide.blocks, parsed);
     updateSlideBlocks(slideIndex, merged);
+    setSummarizeUndo(null);
   }
 
   function applyToSelectedBlocks(fn: (b: Block) => Block) {
@@ -179,13 +182,31 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
       return;
     }
     const confirmed = window.confirm(
-      `本文を要約して短くします（元に戻せません）。\n\n【要約後】\n${summarized}`,
+      `本文を要約して短くします。\n\n【要約後】\n${summarized}`,
     );
     if (!confirmed) return;
+    const previousText = block.text;
     const blocks = currentSlide.blocks.map((b) => (b.id === blockId ? { ...b, text: summarized } : b));
     updateSlideBlocks(slideIndex, blocks);
     setRawText(blocksToText(blocks));
+    setSummarizeUndo({ slideId: currentSlide.id, blockId, previousText });
     setWarningSheetOpen(false);
+  }
+
+  function handleUndoSummarize() {
+    if (!deck || !summarizeUndo) return;
+    const slide = deck.slides.find((s) => s.id === summarizeUndo.slideId);
+    if (!slide) {
+      setSummarizeUndo(null);
+      return;
+    }
+    const blocks = slide.blocks.map((b) =>
+      b.id === summarizeUndo.blockId ? { ...b, text: summarizeUndo.previousText } : b,
+    );
+    const slides = deck.slides.map((s) => (s.id === summarizeUndo.slideId ? { ...s, blocks } : s));
+    commitDeck({ ...deck, slides });
+    if (currentSlide?.id === summarizeUndo.slideId) setRawText(blocksToText(blocks));
+    setSummarizeUndo(null);
   }
 
   async function handleAddImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -300,6 +321,15 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
           </>
         )}
       </div>
+
+      {summarizeUndo && (
+        <div className="editor__undo-bar">
+          <span>要約を適用しました</span>
+          <button className="editor__undo-bar__button" onClick={handleUndoSummarize}>
+            元に戻す
+          </button>
+        </div>
+      )}
 
       <textarea
         ref={textareaRef}
