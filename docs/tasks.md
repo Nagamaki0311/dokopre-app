@@ -22,12 +22,14 @@
 | T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 完了 | developer/reviewer | 3回の指摘サイクル（改行破壊/Undo欠如/Undoとマーカー競合）を経てCritical/High/Medium指摘なしを確認 |
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 完了 | developer/reviewer | debug APKビルド成功、納品docs一式作成。Reviewer指摘のファイル名サニタイズ修正後、Critical/High/Medium指摘なしで承認。Phase 1〜4すべて完了 |
 | T-007 | Android実機でのシステムバー（時刻表示・戻る/ホームボタン）とUIの重なりを解消 | 高 | 完了 | developer/reviewer | `env(safe-area-inset-*)`をヘッダー/ボトムシート/フィルムストリップ/Present上下バーに適用。Reviewer検証で指摘なし。User実機での最終確認待ち |
+| T-008 | Editor画面下部ツールバーがAndroid実機で潰れる不具合を解消 | 高 | 完了 | developer/reviewer | header/toolbar/filmstrip/undo-barにflex-shrink:0、preview/textをflex-grow比率(42:38)+min-heightへ変更。Reviewer検証でブロッキング指摘なし承認 |
 
 ## バックログ（未着手・優先度未確定）
 
 - 画像アセット欠落時、Canvas/PNG/PDF出力にもSlideView相当のプレースホルダー枠を描画する（T-004 Reviewer指摘、Low/CONFIRMED）
 - PDF出力にテキストレイヤー・画像altの代替テキスト埋め込みを検討する（T-004 Reviewer指摘、Low/PLAUSIBLE、アクセシビリティ改善）
 - 警告シートの「要約して縮める」を全警告ブロックに対応させる（T-005 Reviewer指摘、Low/PLAUSIBLE、現状は先頭ブロックのみ）
+- Editor画面の`.editor`に明示的な`overflow-y`を設定するか、極端に低いビューポート高さ（landscape回転時等）でmin-heightを縮小する（T-008 Reviewer指摘、Low〜Medium/PLAUSIBLE、旧実装から存在した挙動でブロッキングではないが改善余地あり）
 
 ## メモ
 

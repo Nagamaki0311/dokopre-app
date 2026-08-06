@@ -305,6 +305,7 @@ button {
   padding-left: calc(var(--sp-3) + var(--safe-left));
   padding-right: calc(var(--sp-3) + var(--safe-right));
   border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
 }
 
 .editor__back {
@@ -326,7 +327,8 @@ button {
 }
 
 .editor__preview {
-  flex: 0 0 42%;
+  flex: 42 1 0%;
+  min-height: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -360,6 +362,7 @@ button {
   color: #8a5a00;
   border-bottom: 1px solid #f0d9a8;
   font-size: 13px;
+  flex-shrink: 0;
 }
 
 .editor__undo-bar__button {
@@ -373,7 +376,8 @@ button {
 }
 
 .editor__text {
-  flex: 0 0 38%;
+  flex: 38 1 0%;
+  min-height: 80px;
   border: none;
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -391,6 +395,7 @@ button {
   padding: var(--sp-2) var(--sp-3);
   border-bottom: 1px solid var(--border);
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .editor__tool {
@@ -418,6 +423,7 @@ button {
   padding-left: calc(var(--sp-3) + var(--safe-left));
   padding-right: calc(var(--sp-3) + var(--safe-right));
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .filmstrip__item {

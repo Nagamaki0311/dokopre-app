@@ -19,6 +19,54 @@
 
 ---
 
+## 2026-08-07 T-008: レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `3a1e568`のレビューを委任した。旧commitとの比較で、360x800/390x844等の通常のスマホ画面サイズで`.editor__tool`高さが修正前(約10px)から修正後(約29px)に改善したことを実際に再現確認。`--safe-bottom`を50px相当に擬似的に上書きしても潰れないことも確認。`npm test`/`npm run build`/`gradle assembleDebug`をすべて再実行し成功を確認。
+- 非ブロッキングの改善提案1件: 極端に低いビューポート高さ（主にlandscape回転時、Editor画面は向きロックしていないため起こりうる）でフィルムストリップが画面下端からはみ出す可能性があるが、暗黙のページスクロールで到達は可能。旧実装から存在した挙動で今回のcommitによる新規の回帰ではないため、バックログに改善候補として記録するに留めた。
+
+### 結果
+- T-008を完了とした。debug APKを再ビルドし（`android/app/build/outputs/apk/debug/app-debug.apk`）Userへ渡す。
+
+### 次回開始位置
+- 実機での最終確認はUser側で実施。
+
+---
+
+## 2026-08-07 T-008: Editor画面ツールバー潰れの修正
+
+### 実施内容
+- `src/styles.css`の`.editor`配下のレイアウトを、「ヘッダー・ツールバー・フィルムストリップ・undo-barは常に必要な高さを確保し、プレビューとテキスト入力欄が残りのスペースを分け合う」構造に変更した。
+  - `.editor__header`・`.editor__toolbar`・`.editor__filmstrip`・`.editor__undo-bar`に`flex-shrink: 0`を追加。
+  - `.editor__preview`を`flex: 0 0 42%`から`flex: 42 1 0%; min-height: 120px;`に変更。
+  - `.editor__text`を`flex: 0 0 38%`から`flex: 38 1 0%; min-height: 80px;`に変更。
+  - これにより、`.editor`全体の高さからヘッダー・ツールバー・フィルムストリップ・undo-barの実高さを差し引いた「残り」を、preview:textが42:38の比率で分け合う形になり、画面が小さい端末やセーフエリアが大きい端末でもツールバー等が潰れなくなる（代わりにpreview/textが少し縮む）。
+
+### 結果
+- `npm test`: 21 passed（回帰なし）。
+- `npm run build`: 型エラーなく成功。
+- Playwright（`vite preview`起動後にChromiumで検証、確認用スクリプトは一時ファイルとして作成・削除済み、リポジトリには残していない）で以下を確認した。
+  - 640×700・640×600のビューポートで`.editor__tool`の実高さが約29〜30pxあり潰れていない。
+  - `addStyleTag`で`--safe-bottom`を60px（640×600）・40px（320×560）に擬似的に上書きしても`.editor__tool`の高さは変わらず約29px維持（filmstripの高さのみ増加し、toolbarは影響を受けない）ことを確認。
+- `npx cap sync android` → `./gradlew assembleDebug --no-daemon`: BUILD SUCCESSFUL。
+- 実機での最終視覚確認は本コンテナ環境にないため未実施。Userに新しいdebug APKでの再確認を依頼する。
+
+### 次回開始位置
+- Reviewerによるレビュー（差分が設計原則・完了条件を満たすかの確認）。承認後、User実機での最終確認。
+
+---
+
+## 2026-08-07 T-008: Editor画面ツールバー潰れを発見
+
+### 実施内容
+- Userが実機で再確認したところ、Editor画面下部のツールバー（マーカー/強調等のボタン列）が潰れて表示される不具合が新たに発覚した（スクリーンショット添付）。
+- 原因調査: `src/styles.css`の`.editor`は`height: 100%`のflexbox（column）で、`.editor__preview`が`flex: 0 0 42%`、`.editor__text`が`flex: 0 0 38%`と固定比率のため、残り約20%弱（ヘッダー分を除く）を`.editor__toolbar`・`.editor__filmstrip`（デフォルトのflex-shrink: 1）が分け合う構造になっている。T-007で`.editor__filmstrip`に`padding-bottom: calc(var(--sp-2) + var(--safe-bottom))`を追加したことで、フィルムストリップが必要とする高さが増え、残り領域に収まらずtoolbar/filmstripがflexboxにより縮められ、ツールバーのボタン列が潰れて表示されている。
+
+### 次回開始位置
+- developerに、`.editor__header`・`.editor__toolbar`・`.editor__filmstrip`（・`.editor__undo-bar`）に`flex-shrink: 0`を付与して縮まないようにし、代わりに`.editor__preview`・`.editor__text`を固定%からflex-growベースの可変サイズ（残りスペースを埋める）に変更する修正を依頼する。
+
+---
+
 ## 2026-08-07 T-007: レビュー承認・完了
 
 ### 実施内容
