@@ -19,6 +19,21 @@
 
 ---
 
+## 2026-08-06 T-005: Reviewer指摘Medium 1件の修正（summarizeUndoのクリア漏れ）
+
+### 実施内容
+- `src/screens/EditorScreen.tsx`の`applyToSelectedBlocks`（`handleMarker`/`handleEmphasis`が共有する処理）に、対象ブロックのブロックIDが`summarizeUndo?.blockId`と一致し、かつスライドも一致する場合に`setSummarizeUndo(null)`でクリアする処理を追加した（`handleTextChange`/`switchSlide`で既に行っているクリア処理と同様のパターン）。整合性チェックの仕組み等の過剰設計は行わず、最小限のクリア処理のみとした。
+
+### 結果
+- `npm test`: 19 passed（既存分含む）。
+- `npm run build`: 型エラーなくビルド成功。
+- Playwright（`/opt/pw-browsers`のChromium）でReviewerの再現手順を実際に試した。(1)長文入力→「文字量が多いため」警告バッジ→「要約して縮める」実行（`window.confirm`をacceptで要約適用、undoバーが表示されることを確認: `.editor__undo-bar`存在=1）。(2)textarea内で全選択(Ctrl+A)しマーカー(yellow)を適用。(3)適用直後、undoバーが消えていること（`.editor__undo-bar`存在=0）をアサートし確認した。スクリーンショットでも該当ブロックにマーカー(黄色ハイライト)が適用され、「元に戻す」ボタン自体が表示されていないことを目視確認した。
+
+### 次回開始位置
+- T-005を「レビュー中」に戻した。reviewerに再レビューを依頼する。承認後、次のタスクへ進む。
+
+---
+
 ## 2026-08-06 T-005: 再レビューで新規Medium指摘（差し戻し）
 
 ### 実施内容

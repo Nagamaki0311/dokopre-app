@@ -148,6 +148,13 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     if (targetIds.size === 0) return;
     const blocks = currentSlide.blocks.map((b) => (targetIds.has(b.id) ? fn(b) : b));
     updateSlideBlocks(slideIndex, blocks);
+    if (
+      summarizeUndo &&
+      summarizeUndo.slideId === currentSlide.id &&
+      targetIds.has(summarizeUndo.blockId)
+    ) {
+      setSummarizeUndo(null);
+    }
   }
 
   function handleMarker(color: MarkerColor) {
