@@ -19,6 +19,30 @@
 
 ---
 
+## 2026-08-06 T-003: Reviewer指摘の修正対応
+
+### 実施内容
+- Reviewer指摘（下記「敵対的検証（差し戻し）」エントリ）の1〜5をすべて修正した。
+  1. **Critical**: `src/storage/deckRepo.ts`の`importDeckJson`に`validateSlide`/`validateBlock`/`validateAsset`を追加し、各Slideの`blocks`が配列であること、各Blockの`type`が既知の値（`heading`/`text`/`bullet`/`image`）であり`type`に応じた必須フィールド（`image`は`assetId`、それ以外は`text`）を持つことを検証するようにした。不正なら分かりやすい日本語メッセージで例外を投げる。加えて`src/App.tsx`にReact ErrorBoundary（クラスコンポーネント）を追加し、想定外のレンダー失敗時にエラーメッセージ表示+再読み込みボタンのフォールバックUIを出すようにした（白画面での復旧不能を防止）。
+  2. **Medium**: `importDeckJson`で、インポートするデッキの`id`が既存デッキと衝突する場合は`genId('deck')`で新しいidを採番してから保存するようにした（`HomeScreen`の複製処理と同様の挙動。既存デッキの暗黙上書きを防止）。
+  3. **Medium**: `src/render/SlideView.tsx`の画像`<img>`の`alt=""`固定をやめ、対応するImageBlockの`block.alt`を参照するよう修正した。`src/screens/EditorScreen.tsx`の`handleAddImage`で、画像追加時のデフォルトaltをファイル名（拡張子除去）から生成するようにし、画像ブロックがある場合のみツールバーに「画像の説明」ボタンを表示し`window.prompt`でalt編集できるようにした（最小限のUI）。
+  4. **Low**: `handleAddImage`をtry/catchで囲み、非画像ファイル選択等で失敗した場合に`window.alert`で日本語メッセージを表示するようにした（unhandled rejection解消）。
+  5. **Low**: `importDeckJson`の`validateAsset`で各assetが非nullオブジェクトかつ`id`/`mime`を持つことを検証するようにした（`assets: [null]`等で生のTypeErrorが出ないようにした）。
+- `src/storage/deckRepo.test.ts`を新規作成し、Vitestで`importDeckJson`の検証パス（blocks欠落/非配列、未知のtype、image用assetId欠落、text欠落、assetsのnull要素、asset必須フィールド欠落、schemaVersion不一致、不正なJSON）9件を追加した。いずれもIndexedDBへ到達する前にバリデーションで例外を投げる経路のため、Node環境（jsdom/IndexedDBモック無し）でも実行可能。
+
+### 結果
+- `npm test`: 14 passed（既存5件+新規9件）。
+- `npx tsc --noEmit`および`npm run build`: 型エラーなく成功。
+- Playwright（`/opt/pw-browsers`のChromium）で`npm run preview`起動後、`blocks`欠落デッキのJSON（`{schemaVersion:1, id, slides:[{id,layoutHint,notes}], assets:[]}`、slideに`blocks`なし）をHome画面の「JSON読み込み」から実際にインポートし、以下を確認した。
+  - `window.alert`で「スライド1にblocksがありません。」という日本語エラーが表示される。
+  - アプリはクラッシュせずHome画面（「どこでもプレゼン」ヘッダー）に留まり続ける。
+- 修正しないと合意した項目（`mergeBlocks`のtype+text完全一致の限界、禁則処理が行頭のみ）は変更していない。
+
+### 次回開始位置
+- T-003を「レビュー中」に戻した。reviewerに再レビューを依頼する。承認後はT-004（Phase 2: PNG/PDF出力）に着手する。
+
+---
+
 ## 2026-08-06 T-003: Reviewerによる敵対的検証（差し戻し）
 
 ### 実施内容

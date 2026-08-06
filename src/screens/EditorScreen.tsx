@@ -154,18 +154,34 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file || !deck || !currentSlide) return;
-    const dataUrl = await fileToDataUrl(file);
-    const { width, height } = await readImageSize(dataUrl);
-    const asset: Asset = { id: genId('asset'), mime: file.type, width, height, data: dataUrl };
-    await putAsset(asset);
-    setAssetsCache((prev) => ({ ...prev, [asset.id]: asset }));
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const { width, height } = await readImageSize(dataUrl);
+      const asset: Asset = { id: genId('asset'), mime: file.type, width, height, data: dataUrl };
+      await putAsset(asset);
+      setAssetsCache((prev) => ({ ...prev, [asset.id]: asset }));
 
-    const withoutOldImage = currentSlide.blocks.filter((b) => b.type !== 'image');
-    const imageBlock: Block = { id: genId('block'), type: 'image', assetId: asset.id, alt: '' };
-    const blocks = [...withoutOldImage, imageBlock];
-    const assetsMeta = [...deck.assets.filter((a) => a.id !== asset.id), { id: asset.id, mime: asset.mime, width: asset.width, height: asset.height }];
-    const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, blocks } : s));
-    commitDeck({ ...deck, slides, assets: assetsMeta });
+      const withoutOldImage = currentSlide.blocks.filter((b) => b.type !== 'image');
+      const defaultAlt = file.name.replace(/\.[^./\\]+$/, '');
+      const imageBlock: Block = { id: genId('block'), type: 'image', assetId: asset.id, alt: defaultAlt };
+      const blocks = [...withoutOldImage, imageBlock];
+      const assetsMeta = [...deck.assets.filter((a) => a.id !== asset.id), { id: asset.id, mime: asset.mime, width: asset.width, height: asset.height }];
+      const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, blocks } : s));
+      commitDeck({ ...deck, slides, assets: assetsMeta });
+    } catch (err) {
+      console.error('画像の追加に失敗しました', err);
+      window.alert('画像を追加できませんでした。画像ファイルを選択してください。');
+    }
+  }
+
+  function handleEditImageAlt() {
+    if (!currentSlide) return;
+    const imageBlock = currentSlide.blocks.find((b): b is Extract<Block, { type: 'image' }> => b.type === 'image');
+    if (!imageBlock) return;
+    const next = window.prompt('画像の代替テキスト（読み上げ用の説明）を入力してください', imageBlock.alt);
+    if (next === null) return;
+    const blocks = currentSlide.blocks.map((b) => (b.id === imageBlock.id ? { ...b, alt: next } : b));
+    updateSlideBlocks(slideIndex, blocks);
   }
 
   function handleNotesChange(value: string) {
@@ -254,6 +270,11 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
           画像
         </button>
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAddImage} />
+        {currentSlide.blocks.some((b) => b.type === 'image') && (
+          <button className="editor__tool" onClick={handleEditImageAlt}>
+            画像の説明
+          </button>
+        )}
         {MARKER_CYCLE.map((color) => (
           <button key={color} className="editor__tool" onClick={() => handleMarker(color)}>
             マーカー({color})

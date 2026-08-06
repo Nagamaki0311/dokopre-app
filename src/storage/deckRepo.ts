@@ -1,6 +1,9 @@
 import { dbDelete, dbGet, dbGetAll, dbPut, STORE_ASSETS, STORE_DECKS } from './db';
-import type { Asset, Deck } from '../types';
+import type { Asset, Block, Deck, Slide } from '../types';
 import { SCHEMA_VERSION } from '../types';
+import { genId } from '../layout/id';
+
+const TEXT_BLOCK_TYPES = new Set(['heading', 'text', 'bullet']);
 
 const AUTOSAVE_DEBOUNCE_MS = 800;
 
@@ -44,9 +47,53 @@ export async function exportDeckJson(deck: Deck): Promise<string> {
   return JSON.stringify(exportable, null, 2);
 }
 
+function validateBlock(block: unknown, slideIndex: number, blockIndex: number): asserts block is Block {
+  if (typeof block !== 'object' || block === null) {
+    throw new Error(`スライド${slideIndex + 1}のブロック${blockIndex + 1}の形式が不正です。`);
+  }
+  const b = block as Partial<Block>;
+  if (typeof b.id !== 'string') {
+    throw new Error(`スライド${slideIndex + 1}のブロック${blockIndex + 1}にidがありません。`);
+  }
+  if (b.type === 'image') {
+    if (typeof (b as { assetId?: unknown }).assetId !== 'string') {
+      throw new Error(`スライド${slideIndex + 1}のブロック${blockIndex + 1}（画像）にassetIdがありません。`);
+    }
+  } else if (b.type !== undefined && TEXT_BLOCK_TYPES.has(b.type)) {
+    if (typeof (b as { text?: unknown }).text !== 'string') {
+      throw new Error(`スライド${slideIndex + 1}のブロック${blockIndex + 1}にtextがありません。`);
+    }
+  } else {
+    throw new Error(`スライド${slideIndex + 1}のブロック${blockIndex + 1}のtypeが不正です（値: ${String(b.type)}）。`);
+  }
+}
+
+function validateSlide(slide: unknown, slideIndex: number): asserts slide is Slide {
+  if (typeof slide !== 'object' || slide === null) {
+    throw new Error(`スライド${slideIndex + 1}の形式が不正です。`);
+  }
+  const s = slide as Partial<Slide>;
+  if (!Array.isArray(s.blocks)) {
+    throw new Error(`スライド${slideIndex + 1}にblocksがありません。`);
+  }
+  s.blocks.forEach((block, blockIndex) => validateBlock(block, slideIndex, blockIndex));
+}
+
+function validateAsset(asset: unknown, index: number): asserts asset is Asset {
+  if (typeof asset !== 'object' || asset === null) {
+    throw new Error(`アセット${index + 1}の形式が不正です。`);
+  }
+  const a = asset as Partial<Asset>;
+  if (typeof a.id !== 'string' || typeof a.mime !== 'string') {
+    throw new Error(`アセット${index + 1}にidまたはmimeがありません。`);
+  }
+}
+
 /**
- * JSON からデッキを読み込む。schemaVersion が一致しない場合は明示的にエラーを投げる（信頼境界での入力検証）。
+ * JSON からデッキを読み込む。schemaVersion が一致しない場合や、Slide/Block/Asset の構造が
+ * 不正な場合は明示的にエラーを投げる（信頼境界での入力検証。壊れたデータでのレンダー時クラッシュを防ぐ）。
  * 画像アセットは assets ストアへ保存し、デッキ本体にはメタデータのみを残す。
+ * 既存デッキとidが衝突する場合は新しいidを採番してインポートする（暗黙の上書きを避ける）。
  */
 export async function importDeckJson(text: string): Promise<Deck> {
   let parsed: unknown;
@@ -69,7 +116,16 @@ export async function importDeckJson(text: string): Promise<Deck> {
     throw new Error('デッキデータに必須項目が不足しています。');
   }
 
+  candidate.slides.forEach((slide, i) => validateSlide(slide, i));
+  candidate.assets.forEach((asset, i) => validateAsset(asset, i));
+
   const deck = candidate as Deck;
+
+  const existing = await loadDeck(deck.id);
+  if (existing) {
+    deck.id = genId('deck');
+  }
+
   for (const asset of deck.assets) {
     if (asset.data) {
       await putAsset(asset);

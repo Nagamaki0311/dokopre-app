@@ -29,6 +29,7 @@ export function SlideView({ result, assets, width, blocks }: SlideViewProps) {
           if (box.role === 'image') {
             const block = blocks.find((b) => b.id === box.blockId);
             const assetId = block && block.type === 'image' ? block.assetId : undefined;
+            const alt = block && block.type === 'image' ? block.alt : '';
             const asset = assets.find((a) => a.id === assetId);
             return (
               <div
@@ -37,7 +38,7 @@ export function SlideView({ result, assets, width, blocks }: SlideViewProps) {
                 style={{ left: box.x, top: box.y, width: box.w, height: box.h }}
               >
                 {asset?.data ? (
-                  <img src={asset.data} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={asset.data} alt={alt} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : null}
               </div>
             );
