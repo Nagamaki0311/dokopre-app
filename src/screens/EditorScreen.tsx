@@ -1,0 +1,351 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { Asset, Block, Deck, MarkerColor, Slide, TemplateId } from '../types';
+import { loadDeck, getAsset, putAsset, scheduleAutosave } from '../storage/deckRepo';
+import { createSlide } from '../deckFactory';
+import { genId } from '../layout/id';
+import { parseText, blocksToText, blocksToTextWithRanges, mergeBlocks } from '../layout/parse';
+import { layoutSlide } from '../layout/layout';
+import { createCanvasMeasurer } from '../layout/measure';
+import { useFontsReady } from '../hooks/useFontsReady';
+import { SlideView } from '../render/SlideView';
+import { useSwipe, useLongPress } from '../ui/gestures';
+import type { ScreenState } from '../hooks/useScreen';
+
+type Props = {
+  deckId: string;
+  navigate: (next: ScreenState) => void;
+  back: () => void;
+};
+
+const TEMPLATE_CYCLE: (TemplateId | 'auto')[] = ['auto', 'title', 'statement', 'bullets', 'twoColumn', 'imageSide'];
+const MARKER_CYCLE: MarkerColor[] = ['yellow', 'pink', 'blue'];
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
+function readImageSize(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
+}
+
+export function EditorScreen({ deckId, navigate, back }: Props) {
+  const [deck, setDeck] = useState<Deck | null>(null);
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [rawText, setRawText] = useState('');
+  const [assetsCache, setAssetsCache] = useState<Record<string, Asset>>({});
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const fontsReady = useFontsReady();
+  const measurer = useMemo(() => createCanvasMeasurer(), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadDeck(deckId).then(async (loaded) => {
+      if (cancelled) return;
+      if (!loaded) {
+        back();
+        return;
+      }
+      setDeck(loaded);
+      setSlideIndex(0);
+      setRawText(blocksToText(loaded.slides[0]?.blocks ?? []));
+
+      const cache: Record<string, Asset> = {};
+      for (const meta of loaded.assets) {
+        const full = await getAsset(meta.id);
+        if (full) cache[full.id] = full;
+      }
+      if (!cancelled) setAssetsCache(cache);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [deckId, back]);
+
+  const currentSlide: Slide | undefined = deck?.slides[slideIndex];
+
+  const layout = useMemo(() => {
+    if (!currentSlide || !fontsReady) return null;
+    return layoutSlide(currentSlide, measurer);
+  }, [currentSlide, fontsReady, measurer]);
+
+  function commitDeck(next: Deck) {
+    const updated = { ...next, updatedAt: new Date().toISOString() };
+    setDeck(updated);
+    scheduleAutosave(updated);
+  }
+
+  function updateSlideBlocks(index: number, blocks: Block[]) {
+    if (!deck) return;
+    const slides = deck.slides.map((s, i) => (i === index ? { ...s, blocks } : s));
+    commitDeck({ ...deck, slides });
+  }
+
+  function switchSlide(index: number) {
+    if (!deck) return;
+    const clamped = Math.max(0, Math.min(deck.slides.length - 1, index));
+    setSlideIndex(clamped);
+    setRawText(blocksToText(deck.slides[clamped]?.blocks ?? []));
+  }
+
+  const previewSwipe = useSwipe({
+    onSwipeLeft: () => switchSlide(slideIndex + 1),
+    onSwipeRight: () => switchSlide(slideIndex - 1),
+  });
+
+  function handleTextChange(value: string) {
+    if (!deck || !currentSlide) return;
+    setRawText(value);
+    const parsed = parseText(value);
+    const merged = mergeBlocks(currentSlide.blocks, parsed);
+    updateSlideBlocks(slideIndex, merged);
+  }
+
+  function applyToSelectedBlocks(fn: (b: Block) => Block) {
+    if (!currentSlide || !textareaRef.current) return;
+    const { ranges } = blocksToTextWithRanges(currentSlide.blocks);
+    const selStart = textareaRef.current.selectionStart;
+    const selEnd = textareaRef.current.selectionEnd;
+    const targetIds = new Set(
+      ranges
+        .filter((r) => (selStart === selEnd ? selStart >= r.start && selStart <= r.end : r.start < selEnd && r.end > selStart))
+        .map((r) => r.blockId),
+    );
+    if (targetIds.size === 0) return;
+    const blocks = currentSlide.blocks.map((b) => (targetIds.has(b.id) ? fn(b) : b));
+    updateSlideBlocks(slideIndex, blocks);
+  }
+
+  function handleMarker(color: MarkerColor) {
+    applyToSelectedBlocks((b) => {
+      if (b.type === 'image') return b;
+      return { ...b, marker: b.marker === color ? null : color };
+    });
+  }
+
+  function handleEmphasis() {
+    applyToSelectedBlocks((b) => {
+      if (b.type === 'image') return b;
+      return { ...b, emphasis: !b.emphasis };
+    });
+  }
+
+  function handleCycleTemplate() {
+    if (!deck || !currentSlide) return;
+    const idx = TEMPLATE_CYCLE.indexOf(currentSlide.layoutHint);
+    const next = TEMPLATE_CYCLE[(idx + 1) % TEMPLATE_CYCLE.length];
+    const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, layoutHint: next } : s));
+    commitDeck({ ...deck, slides });
+  }
+
+  async function handleAddImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !deck || !currentSlide) return;
+    const dataUrl = await fileToDataUrl(file);
+    const { width, height } = await readImageSize(dataUrl);
+    const asset: Asset = { id: genId('asset'), mime: file.type, width, height, data: dataUrl };
+    await putAsset(asset);
+    setAssetsCache((prev) => ({ ...prev, [asset.id]: asset }));
+
+    const withoutOldImage = currentSlide.blocks.filter((b) => b.type !== 'image');
+    const imageBlock: Block = { id: genId('block'), type: 'image', assetId: asset.id, alt: '' };
+    const blocks = [...withoutOldImage, imageBlock];
+    const assetsMeta = [...deck.assets.filter((a) => a.id !== asset.id), { id: asset.id, mime: asset.mime, width: asset.width, height: asset.height }];
+    const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, blocks } : s));
+    commitDeck({ ...deck, slides, assets: assetsMeta });
+  }
+
+  function handleNotesChange(value: string) {
+    if (!deck || !currentSlide) return;
+    const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, notes: value } : s));
+    commitDeck({ ...deck, slides });
+  }
+
+  function handleTitleChange(value: string) {
+    if (!deck) return;
+    commitDeck({ ...deck, title: value });
+  }
+
+  function handleAddSlide() {
+    if (!deck) return;
+    const slide = createSlide();
+    const slides = [...deck.slides, slide];
+    commitDeck({ ...deck, slides });
+    switchSlide(slides.length - 1);
+  }
+
+  function handleDeleteSlide(index: number) {
+    if (!deck || deck.slides.length <= 1) return;
+    const slides = deck.slides.filter((_, i) => i !== index);
+    commitDeck({ ...deck, slides });
+    switchSlide(Math.min(index, slides.length - 1));
+  }
+
+  function handleReorder(from: number, to: number) {
+    if (!deck || from === to) return;
+    const slides = deck.slides.slice();
+    const [moved] = slides.splice(from, 1);
+    slides.splice(to, 0, moved);
+    commitDeck({ ...deck, slides });
+    setSlideIndex(to);
+  }
+
+  if (!deck || !currentSlide) {
+    return <div className="editor" />;
+  }
+
+  return (
+    <div className="editor">
+      <div className="editor__header">
+        <button className="editor__back" onClick={back} aria-label="戻る">
+          ←
+        </button>
+        <input
+          className="editor__title-input"
+          value={deck.title}
+          onChange={(e) => handleTitleChange(e.target.value)}
+        />
+      </div>
+
+      <div className="editor__preview" {...previewSwipe}>
+        {layout && (
+          <>
+            <SlideView result={layout} assets={Object.values(assetsCache)} blocks={currentSlide.blocks} width={Math.min(560, window.innerWidth - 32)} />
+            {layout.warnings.length > 0 && (
+              <div className="editor__warning-badge">⚠ {layout.warnings[0].message}</div>
+            )}
+          </>
+        )}
+      </div>
+
+      <textarea
+        ref={textareaRef}
+        className="editor__text"
+        value={rawText}
+        onChange={(e) => handleTextChange(e.target.value)}
+        placeholder={'1行目がタイトルになります\n・箇条書きは記号(・-*)で\n空行で段落を区切ります'}
+      />
+
+      {notesOpen && (
+        <textarea
+          className="editor__text"
+          style={{ flex: '0 0 20%' }}
+          value={currentSlide.notes}
+          onChange={(e) => handleNotesChange(e.target.value)}
+          placeholder="発表メモ"
+        />
+      )}
+
+      <div className="editor__toolbar">
+        <button className="editor__tool" onClick={() => imageInputRef.current?.click()}>
+          画像
+        </button>
+        <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAddImage} />
+        {MARKER_CYCLE.map((color) => (
+          <button key={color} className="editor__tool" onClick={() => handleMarker(color)}>
+            マーカー({color})
+          </button>
+        ))}
+        <button className="editor__tool" onClick={handleEmphasis}>
+          強調
+        </button>
+        <button className="editor__tool" onClick={handleCycleTemplate}>
+          レイアウト: {currentSlide.layoutHint}
+        </button>
+        <button className={`editor__tool${notesOpen ? ' editor__tool--active' : ''}`} onClick={() => setNotesOpen((v) => !v)}>
+          メモ
+        </button>
+        <button className="editor__tool" onClick={() => navigate({ name: 'present', deckId: deck.id, index: slideIndex })}>
+          ▶ 発表
+        </button>
+      </div>
+
+      <div className="editor__filmstrip">
+        {deck.slides.map((s, i) => (
+          <FilmstripItem
+            key={s.id}
+            slide={s}
+            active={i === slideIndex}
+            measurer={measurer}
+            dragging={dragIndex === i}
+            onSelect={() => switchSlide(i)}
+            onDragStart={() => setDragIndex(i)}
+            onDragEnter={() => {
+              if (dragIndex !== null && dragIndex !== i) {
+                handleReorder(dragIndex, i);
+                setDragIndex(i);
+              }
+            }}
+            onDragEnd={() => setDragIndex(null)}
+            onDeleteSwipeUp={() => handleDeleteSlide(i)}
+          />
+        ))}
+        <button className="filmstrip__add" onClick={handleAddSlide} aria-label="スライド追加">
+          ＋
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FilmstripItem({
+  slide,
+  active,
+  measurer,
+  dragging,
+  onSelect,
+  onDragStart,
+  onDragEnter,
+  onDragEnd,
+  onDeleteSwipeUp,
+}: {
+  slide: Slide;
+  active: boolean;
+  measurer: ReturnType<typeof createCanvasMeasurer>;
+  dragging: boolean;
+  onSelect: () => void;
+  onDragStart: () => void;
+  onDragEnter: () => void;
+  onDragEnd: () => void;
+  onDeleteSwipeUp: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const longPress = useLongPress(onDragStart);
+  const swipe = useSwipe({ onSwipeUp: onDeleteSwipeUp });
+  const layout = useMemo(() => layoutSlide(slide, measurer), [slide, measurer]);
+
+  return (
+    <div
+      ref={ref}
+      className={`filmstrip__item${active ? ' filmstrip__item--active' : ''}`}
+      style={{ opacity: dragging ? 0.5 : 1 }}
+      onClick={onSelect}
+      onPointerDown={(e) => {
+        longPress.onPointerDown(e);
+        swipe.onPointerDown(e);
+      }}
+      onPointerUp={(e) => {
+        longPress.onPointerUp(e);
+        swipe.onPointerUp(e);
+        onDragEnd();
+      }}
+      onPointerLeave={longPress.onPointerLeave}
+      onPointerEnter={onDragEnter}
+    >
+      <SlideView result={layout} assets={[]} blocks={slide.blocks} width={80} />
+    </div>
+  );
+}
