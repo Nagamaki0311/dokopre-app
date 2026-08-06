@@ -19,6 +19,34 @@
 
 ---
 
+## 2026-08-06 T-006: Phase 4 (Capacitor Android化・APKビルド・納品ドキュメント一式) 実装
+
+### 実施内容
+- **Android SDKの導入**: この開発コンテナにAndroid SDKは未導入だったが、`https://dl.google.com/android/repository/`へのネットワークアクセスが可能だったため、Android SDK Command-line Tools（`commandlinetools-linux-11076708_latest.zip`）を取得し`/opt/android-sdk`に導入した。ライセンス承諾後、`platform-tools`・`platforms;android-35`・`build-tools;35.0.0`を`sdkmanager`でインストールした（`platforms;android-36`は後述のGradleビルド時にAndroid Gradle Pluginが`compileSdkVersion=36`向けに自動追加取得した）。想定していた「30分で見込みが立たなければ諦める」リスクは顕在化せず、SDK導入・ライセンス承諾・パッケージ取得は10分程度で完了した。
+- **Capacitor統合**: `npm i @capacitor/core @capacitor/cli` → `npx cap init "どこでもプレゼン" "com.dokopre.app" --web-dir dist` → `npm run build`（`dist/`生成）→ `npm i @capacitor/android` → `npx cap add android`の順で`android/`ネイティブプロジェクトを生成した。続けて`@capacitor/screen-orientation`・`@capacitor/share`・`@capacitor/filesystem`を追加し（カメラ不使用要件のため`@capacitor/camera`は追加せず）、`npx cap sync android`でネイティブ側に反映した。
+- **debug APKビルド成功**: `android/gradle/wrapper/gradle-wrapper.properties`が要求するGradleバージョン（8.14.3）がこのコンテナに導入済み（`/opt/gradle-8.14.3`）だったため、`./gradlew`によるラッパー配布物の再ダウンロードを避け、システムの`gradle`コマンドを直接使用した。`android/local.properties`に`sdk.dir=/opt/android-sdk`を設定した上で`gradle assembleDebug --no-daemon`を実行し、`BUILD SUCCESSFUL`（初回184 actionable tasks、約4分）。生成物`android/app/build/outputs/apk/debug/app-debug.apk`（約23MB）を確認した。プラグイン追加後の再ビルドでも成功を再確認した（約30秒、up-to-date中心）。
+- **ネイティブ機能の軽量統合**: `PresentScreen.tsx`の画面回転制御を、素の`screen.orientation` APIの型キャストによる実装から`@capacitor/screen-orientation`の`ScreenOrientation.lock/unlock`に置き換えた（同プラグインはWeb実行時はブラウザのScreen Orientation APIへ委譲するため、Web版フォールバック挙動は変わらない）。`src/export/exportPng.ts`の`downloadBlob`を非同期化し、`Capacitor.isNativePlatform()`で分岐: ネイティブ実行時は`@capacitor/filesystem`でキャッシュディレクトリに書き込み`@capacitor/share`で共有シートを開く、Web版（あるいはネイティブでの書き込み/共有が失敗した場合）は既存の`<a download>` + Blob URLへフォールバックする。呼び出し元（`EditorScreen.tsx`のPNG保存、`HomeScreen.tsx`のPDF書き出し）は`downloadBlob`をawaitするよう変更した。ファイル選択（画像追加・JSON読み込み）は既存のWeb `input[type=file]`のまま変更していない。
+- **`.gitignore`の見直し**: ルート`.gitignore`が`android/`ディレクトリ全体を無視する設定になっており、これでは生成したネイティブプロジェクト（ソース一式）がコミットされないため、`android/`の行を削除した。`android/.gitignore`（Capacitor CLIが生成した標準的なAndroid向け`.gitignore`）が`build/`・`.gradle/`・`local.properties`・コピーされたWeb assets等のビルド生成物を個別に除外するため、二重の除外設定にはなっていない。
+- **vite.config.tsの確認**: Phase 1で設定済みの`base: './'`はCapacitorのWebView（`file://`起点でのアセット読み込み）と整合することを確認した（変更不要）。
+- **納品ドキュメント一式の作成**: `docs/requirements.md`（要件定義）・`docs/screens.md`（画面遷移図Mermaid＋ワイヤーフレーム概要）・`docs/design.md`（デザイントークン等）・`docs/architecture.md`（レイアウトエンジン/二重レンダラ/IndexedDB永続化/Capacitor構成）・`docs/data-schema.md`（`types.ts`の型定義転記）・`docs/build-android.md`（このコンテナでの実施結果＋User環境向け手順）・`docs/operations.md`（テンプレート追加方法・AI補助拡張方法・既知の制約まとめ）を新規作成した。`README.md`に各docsへのリンクを追記した。
+
+### 結果
+- `npm test`（Vitest）: 19 passed（Phase 3から変更なし、Capacitor統合による回帰なし）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。
+- `gradle assembleDebug --no-daemon`（`android/`）: `BUILD SUCCESSFUL`、`app-debug.apk`生成を確認。
+- Playwright（`/opt/pw-browsers`のChromium、`npm run preview`起動後）でCapacitorプラグイン統合後もWeb版が従来通り動作することを確認した。
+  1. Home画面表示→新規作成→Editor画面遷移→テキスト入力→レイアウト自動生成（見出し/箇条書き）を確認。
+  2. 「▶ 発表」でPresent画面に遷移し、スライド内容が正しくレンダリングされることを確認（`ScreenOrientation.lock`呼び出しがWeb実行時にエラーを起こさずconsoleエラーなしで完了することを確認。ブラウザ設定上、実際の画面回転はできないがtry/catchでの握りつぶしにより機能停止しないことを確認）。
+  3. 「PNG保存」ボタンでPlaywrightの`download`イベントが発火し、`Capacitor.isNativePlatform()`がfalseとなりWeb版の`<a download>`フォールバック経路が使われることを確認（ファイル名の観察により、ネイティブ分岐に入っていないことを確認）。
+  4. いずれの操作でもコンソールエラー（`pageerror`）は発生しなかった。
+- **実機・エミュレータでの動作確認は未実施**: この開発コンテナにはAndroidエミュレータ・実機がないため、`adb install`によるインストール確認、画面回転ロックの実機動作、PNG/PDF保存時のFilesystem/Shareの実機動作は確認できていない。D-001に記載の通り、実機確認はUser側で行う前提とした。
+
+### 次回開始位置
+- T-006を「レビュー中」とした。reviewerに(1)Capacitor統合がWeb版のフォールバック動作（`try/catch`によるネイティブ機能非対応時の握りつぶし）を壊していないか、(2)`.gitignore`変更後に`android/`配下の意図しない生成物（`build/`等）がコミット対象に含まれていないか、(3)納品ドキュメントの内容が実装と一致しているか（架空の記述がないか）を中心にレビューを依頼する。
+- 承認後、T-006を完了とする（本タスクをもってPhase 1〜4が完了する）。
+
+---
+
 ## 2026-08-06 T-005: 最終レビュー承認・完了
 
 ### 実施内容

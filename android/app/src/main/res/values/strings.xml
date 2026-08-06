@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">どこでもプレゼン</string>
+    <string name="title_activity_main">どこでもプレゼン</string>
+    <string name="package_name">com.dokopre.app</string>
+    <string name="custom_url_scheme">com.dokopre.app</string>
+</resources>

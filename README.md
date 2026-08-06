@@ -39,6 +39,13 @@
   - capability-layer.md: 外部ツール検出の共通規約（Capability Layer）
   - research-workflow.md: 外部調査ワークフロー
   - status-line.md: サブエージェント進捗の可視化（Status Line）の仕様
+  - requirements.md: 「どこでもプレゼン」の要件定義
+  - screens.md: 画面遷移図・ワイヤーフレーム概要
+  - design.md: UIデザイン仕様（デザイントークン等）
+  - architecture.md: アーキテクチャ設計（レイアウトエンジン・二重レンダラ・永続化・Capacitor構成）
+  - data-schema.md: データ構造（Deck/Slide/Block/Asset/LayoutResult）
+  - build-android.md: APKビルド手順（この開発コンテナでの実施結果を含む）
+  - operations.md: 運用・拡張ガイド（テンプレート追加・AI補助拡張・既知の制約）
 
 ## 開発フロー
 

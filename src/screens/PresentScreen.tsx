@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { ScreenOrientation } from '@capacitor/screen-orientation';
 import type { Asset, Deck } from '../types';
 import { loadDeck, getAsset } from '../storage/deckRepo';
 import { layoutSlide } from '../layout/layout';
@@ -51,12 +52,11 @@ export function PresentScreen({ deckId, index, back }: Props) {
   }, [deckId]);
 
   useEffect(() => {
-    const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
-    orientation?.lock?.('landscape').catch(() => {
-      // 対応していない/許可されない場合は CSS の 16:9 フィットに任せる
-    });
+    // ネイティブ(Android)ではCapacitorプラグイン経由、Webでは同プラグインがブラウザのScreen Orientation APIに委譲する。
+    // 対応していない/許可されない場合はCSSの16:9フィット（下記widthの計算）に任せる。
+    ScreenOrientation.lock({ orientation: 'landscape' }).catch(() => {});
     return () => {
-      (screen.orientation as ScreenOrientation & { unlock?: () => void })?.unlock?.();
+      ScreenOrientation.unlock().catch(() => {});
     };
   }, []);
 

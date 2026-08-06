@@ -102,7 +102,7 @@ export function HomeScreen({ navigate }: Props) {
     setExportingPdf(true);
     try {
       const blob = await exportDeckAsPdf(deck, measurer);
-      downloadBlob(blob, `${deck.title || 'deck'}.pdf`);
+      await downloadBlob(blob, `${deck.title || 'deck'}.pdf`);
       setSheetDeck(null);
     } catch (err) {
       console.error('PDFの書き出しに失敗しました', err);

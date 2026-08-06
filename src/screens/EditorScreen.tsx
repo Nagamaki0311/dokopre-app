@@ -255,7 +255,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     setExportingPng(true);
     try {
       const blob = await exportSlideAsPng(currentSlide, Object.values(assetsCache), measurer);
-      downloadBlob(blob, `${deck?.title || 'slide'}-${slideIndex + 1}.png`);
+      await downloadBlob(blob, `${deck?.title || 'slide'}-${slideIndex + 1}.png`);
     } catch (err) {
       console.error('PNGの保存に失敗しました', err);
       window.alert('PNGの保存に失敗しました。もう一度お試しください。');
