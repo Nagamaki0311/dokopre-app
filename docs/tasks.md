@@ -18,13 +18,14 @@
 | T-001 | project001テンプレートからdokopre-app用への初期化（docs/tasks・progress・decisionsリセット） | 高 | 完了 | claude | README.mdの初期化手順に従いdocs 3ファイルをリセット。/init-projectコマンドとREADME該当節はテンプレート専用のため削除（本リポジトリはアプリ本体として運用するため） |
 | T-002 | 「どこでもプレゼン」要件定義・画面遷移・アーキテクチャ・データ構造の計画作成 | 高 | 完了 | planner | Web(React+TS+Vite)+Capacitor採用、自動レイアウトエンジンをレンダラ非依存の純粋関数として設計（D-001/D-002参照） |
 | T-003 | Phase 1 (MVP): プロジェクト初期化・自動レイアウトエンジン・3画面・ローカル保存 | 高 | 完了 | developer/reviewer | Reviewer再検証（意地悪なテストケース含む）で指摘事項の解消を確認、npm test 14件・npm run build成功 |
-| T-004 | Phase 2: PNG/PDF出力 | 中 | レビュー中 | developer | Canvasレンダラは`LayoutResult`を共有しレイアウト判断を二重実装しない（D-002）。pdf-lib追加、npm test/build成功、Playwrightで動作確認済み |
-| T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 未着手 | developer | ルールベース/ローカル処理のみ（外部LLM API不使用、D-002） |
+| T-004 | Phase 2: PNG/PDF出力 | 中 | 完了 | developer/reviewer | Reviewer検証でCritical/High/Medium指摘なし。Low指摘2件（画像アセット欠落時のプレースホルダー未描画、PDFにテキストレイヤー/alt情報なし）は既知の制約として記録し許容 |
+| T-005 | Phase 3: AI補助の高度化（要約・読みやすさ評価・レイアウト候補提示UI） | 中 | 実装中 | developer | ルールベース/ローカル処理のみ（外部LLM API不使用、D-002） |
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 未着手 | developer | Android SDK未導入のためdebug APKビルド成功＋手順書を完了条件とし実機確認はUser側 |
 
 ## バックログ（未着手・優先度未確定）
 
-- （ここに新しいタスク候補を追記する）
+- 画像アセット欠落時、Canvas/PNG/PDF出力にもSlideView相当のプレースホルダー枠を描画する（T-004 Reviewer指摘、Low/CONFIRMED）
+- PDF出力にテキストレイヤー・画像altの代替テキスト埋め込みを検討する（T-004 Reviewer指摘、Low/PLAUSIBLE、アクセシビリティ改善）
 
 ## メモ
 
