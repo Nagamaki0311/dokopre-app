@@ -19,6 +19,20 @@
 
 ---
 
+## 2026-08-06 T-005: 最終レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `9ead962`の再レビューを委任した。`applyToSelectedBlocks`のクリア条件（`summarizeUndo.slideId === currentSlide.id && targetIds.has(summarizeUndo.blockId)`）が過不足なく機能すること（対象ブロックのみクリア、別ブロックへの適用では保持される）をコード上・記録された実機確認の両面で確認。`npm test`(19件)・`npm run build`を再実行し成功を確認。
+- Phase 3全体（`git diff 9de3753 9ead962`）を俯瞰し、危険なAPI使用等の新規懸念がないことも確認した。Critical/High/Medium指摘なし、承認。
+
+### 結果
+- T-005（Phase 3: AI補助の高度化）を完了とした。3回の指摘サイクル（改行破壊/Undo欠如→Undoとマーカー競合）を経て収束。
+
+### 次回開始位置
+- T-006（Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式）に着手する。
+
+---
+
 ## 2026-08-06 T-005: Reviewer指摘Medium 1件の修正（summarizeUndoのクリア漏れ）
 
 ### 実施内容
