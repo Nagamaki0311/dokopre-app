@@ -27,7 +27,7 @@
 | T-010 | ダークモード実装 | 高 | 完了 | developer/reviewer | スライド面固定トークンとPNG/PDF出力の一致(D-003最重要要件)を実測確認。Low指摘(theme-color)修正後、Critical/High/Medium/Low指摘なしで承認 |
 | T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | 完了 | developer/reviewer | Block.id独立性・削除Undo順序・switchSlide副次修正・境界値をReviewerが実測確認、指摘事項なしで承認 |
 | T-012 | プレゼンモードの没入型全画面表示 | 中 | 完了 | developer/reviewer | Reviewerが意地悪な再現手順（requestFullscreen遅延解決モック）で修正を実測確認。Critical/High/Medium指摘なしで承認 |
-| T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | レビュー中 | developer | Low1件（LayoutResult.alignにdocコメント追加）+Nit1件（selectAlignの冗長な型ガード削除）の仕上げ対応完了。再レビュー待ち |
+| T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | 完了 | developer/reviewer | Reviewerが総当たりテストで右揃え非選択・centerBox共通幅等を実証確認。Nit1件（型ガードの型精度、実害なし）のみ残存しバックログ記録、Critical/High/Medium/Low指摘なしで承認 |
 
 ## バックログ（未着手・優先度未確定）
 
@@ -35,6 +35,7 @@
 - PDF出力にテキストレイヤー・画像altの代替テキスト埋め込みを検討する（T-004 Reviewer指摘、Low/PLAUSIBLE、アクセシビリティ改善）
 - 警告シートの「要約して縮める」を全警告ブロックに対応させる（T-005 Reviewer指摘、Low/PLAUSIBLE、現状は先頭ブロックのみ）
 - Editor画面の`.editor`に明示的な`overflow-y`を設定するか、極端に低いビューポート高さ（landscape回転時等）でmin-heightを縮小する（T-008 Reviewer指摘、Low〜Medium/PLAUSIBLE、旧実装から存在した挙動でブロッキングではないが改善余地あり）
+- `src/layout/templates.ts`の`selectAlign`内の型ガードが`Exclude<AnalyzedBlock, {...}>`の分配条件付き型の都合で`heading`を型レベルで除外できていない（T-013 Reviewer指摘、Nit、ランタイム挙動への実害なし。`Extract`で「含める型」を明示する形へのリファクタが将来候補）
 
 ## メモ
 
