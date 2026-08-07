@@ -19,6 +19,25 @@
 
 ---
 
+## 2026-08-07 T-014: `.sheet__item`にcolor明示を追加して修正
+
+### 実施内容
+- `src/styles.css`の`.sheet__item`ルールに`color: var(--fg);`を追加した。`.sheet__item--danger`は`color: var(--danger)`をカスケードで上書きするため、修正後も削除ボタンの赤色表示は維持される。
+- Managerが確認済みの`.editor__tool`・`.editor__back`・`.fab`・`.filmstrip__add`・`.home__theme-toggle`・`.home__import`・`.editor__undo-bar__button`・`.editor__warning-badge`・`.template-picker__item`に加え、`<button>`を使う全classNameを`grep`で再確認した。追加で`.present__exit`（プレゼン終了ボタン）を発見したが`color: #fff`が既に明示済みで問題なし。他に見落としはなかった。
+
+### 結果
+- `npm test`: 31 passed（4 files）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。
+- Playwright（`chromium`、`/opt/pw-browsers`使用）でvite devサーバー上を実測。
+  - ダークモード（`localStorage.dokopre.theme = 'dark'`）: HomeScreenのデッキ長押しシート「複製」「JSON書き出し」「PDF書き出し」、EditorScreenのスライド操作シート「複製」、警告シート「閉じる」すべて`color: rgb(230, 230, 230)`（`--fg: #e6e6e6`相当）で表示された。「削除」ボタン（`.sheet__item--danger`）は`rgb(224, 119, 111)`（`--danger`）のままでカスケード上書きが正常に機能していることを確認した。
+  - ライトモード（`theme = 'light'`）: 同シートの通常ボタンは`rgb(34, 34, 34)`（`--fg: #222222`相当）となり、修正前後で見た目の変化がないことを確認した。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`（`android/local.properties`の`sdk.dir=/opt/android-sdk`使用）: `BUILD SUCCESSFUL`、`android/app/build/outputs/apk/debug/app-debug.apk`を再生成した。
+
+### 次回開始位置
+- reviewerにこの修正（`.sheet__item`への`color: var(--fg)`追加）のレビューを依頼する。承認後、Managerが完了判定を行いdebug APKをUserへ渡す。
+
+---
+
 ## 2026-08-07 T-014: ダークモードの黒字不可視バグを発見
 
 ### 実施内容
