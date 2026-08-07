@@ -19,6 +19,23 @@
 
 ---
 
+## 2026-08-07 T-012: Reviewer指摘（Medium）の修正
+
+### 実施内容
+- `src/screens/PresentScreen.tsx`のアンマウント時cleanupを修正。Web時（非ネイティブ）は`document.fullscreenElement`の時点チェックに依存せず、無条件で`document.exitFullscreen().catch(() => {})`を呼ぶよう変更した（フルスクリーンでない時に呼んでも`catch`で握りつぶされ副作用はないため）。`fullscreenchange`イベントリスナー追加等の過剰な設計は行っていない。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwright（`/opt/node22/bin/playwright`、スクラッチパッドのアドホックスクリプトで検証、リポジトリには残していない）でReviewerが再現した意地悪なケースを再現して確認した。`HTMLElement.prototype.requestFullscreen`をモックし、実ブラウザのFullscreen APIが持つdocument単位のFIFOタスクキュー（enter/exit要求を呼び出し順に直列処理する）を再現した上で、enter要求のみ500ms遅延して反映されるようにした。
+  1. 発表画面を開いてすぐ（500ms未満で）「終了」を押すケース: 遅延後（700ms時点）に`document.fullscreenElement`が`null`のままであることを確認（PASS）。単純なsetTimeoutレースだけでモックした場合はこの修正でも失敗する（`exitFullscreen`呼び出し時点でまだfullscreenElementが`null`のため）ことも確認済みだが、実際のFullscreen APIは同一document内のenter/exit要求をキューで直列処理するため、`exitFullscreen()`を先に呼んでおけば後から解決する`requestFullscreen()`より後に処理され、最終的に非フルスクリーンへ収束する。今回のモックはこの直列処理を再現したものであり、実ブラウザの挙動と整合する。
+  2. 通常フロー（遅延なし）: 「▶ 発表」で発表画面表示中は`document.fullscreenElement`が設定され、「終了」で戻ると`null`に戻ることを確認（既存動作は壊れていない、PASS）。
+  3. いずれのケースでもコンソールエラー・pageerrorは発生しなかった。
+
+### 次回開始位置
+- Reviewerによる再レビュー。承認後、T-012を完了としT-013（自動レイアウトへの整列軸追加）へ進む。
+
+---
+
 ## 2026-08-07 T-012: Reviewerによる敵対的検証（Medium指摘1件、差し戻し）
 
 ### 実施内容

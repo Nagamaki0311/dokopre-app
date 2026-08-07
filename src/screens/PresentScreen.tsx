@@ -65,7 +65,10 @@ export function PresentScreen({ deckId, index, back }: Props) {
       ScreenOrientation.unlock().catch(() => {});
       if (Capacitor.isNativePlatform()) {
         SystemBars.show().catch(() => {});
-      } else if (document.fullscreenElement) {
+      } else {
+        // requestFullscreen()のPromiseがこのcleanup後に解決する場合があるため、
+        // document.fullscreenElementの時点チェックに依存せず無条件で呼ぶ
+        // （フルスクリーンでない時に呼んでもcatchで握りつぶされ副作用はない）。
         document.exitFullscreen().catch(() => {});
       }
     };
