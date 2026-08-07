@@ -19,6 +19,17 @@
 
 ---
 
+## 2026-08-07 T-014: ダークモードの黒字不可視バグを発見
+
+### 実施内容
+- Userからダークモード時に一部テキストが黒字で見えないとの報告があった。`src/styles.css`をManagerが調査し、`.sheet__item`（`<button>`要素、HomeScreenのデッキ操作シート「複製/JSON書き出し/PDF書き出し」・EditorScreenのスライド操作シート「複製」・警告シートの「閉じる」等で使用）に`color`が明示的に指定されていないことを特定した。ブラウザは`<button>`にCSSの`color`継承をデフォルトで適用しない（UAスタイルシートが独自のボタン文字色を持つ）ため、body側で`color: var(--fg)`を設定していても`.sheet__item`はそれを継承せず、ダークモードの暗い背景上でも常にブラウザデフォルトの黒文字のまま表示され、事実上見えなくなっていた。`.sheet__item--danger`（削除ボタン）は`color: var(--danger)`を明示していたため今回の対象外。
+- 他の`<button>`要素（`.editor__tool`・`.editor__back`・`.fab`・`.filmstrip__add`・`.home__theme-toggle`・`.home__import`・`.editor__undo-bar__button`・`.editor__warning-badge`）はすべて`color`が明示済みであることを確認した。
+
+### 次回開始位置
+- developerに、`.sheet__item`へ`color: var(--fg);`を追加する修正を依頼する。
+
+---
+
 ## 2026-08-07 T-013: 最終レビュー承認・完了（T-009〜T-013一連の改善完了）
 
 ### 実施内容

@@ -28,6 +28,7 @@
 | T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | 完了 | developer/reviewer | Block.id独立性・削除Undo順序・switchSlide副次修正・境界値をReviewerが実測確認、指摘事項なしで承認 |
 | T-012 | プレゼンモードの没入型全画面表示 | 中 | 完了 | developer/reviewer | Reviewerが意地悪な再現手順（requestFullscreen遅延解決モック）で修正を実測確認。Critical/High/Medium指摘なしで承認 |
 | T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | 完了 | developer/reviewer | Reviewerが総当たりテストで右揃え非選択・centerBox共通幅等を実証確認。Nit1件（型ガードの型精度、実害なし）のみ残存しバックログ記録、Critical/High/Medium/Low指摘なしで承認 |
+| T-014 | ダークモード時に一部テキストが黒字で見えない不具合を解消 | 高 | 実装中 | developer | `.sheet__item`(button)にcolor未指定のためUAデフォルト黒色になっていた。User報告で発覚 |
 
 ## バックログ（未着手・優先度未確定）
 
