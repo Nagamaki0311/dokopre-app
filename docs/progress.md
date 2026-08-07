@@ -19,6 +19,26 @@
 
 ---
 
+## 2026-08-07 T-010: ダークモード実装
+
+### 実施内容
+- `src/styles.css`: `:root`にトークンを追加（`--on-accent`/`--warn-bg`/`--warn-fg`/`--warn-border`、およびスライド面専用の固定トークン`--slide-bg`/`--slide-fg`/`--slide-muted`）。`.editor__warning-badge`・`.editor__undo-bar`・`.editor__undo-bar__button`・`.fab`・`.editor__tool--active`のハードコード色をトークン化。`:root[data-theme='dark']`ブロックを新設しUIシャーシ色のみ上書き（`--slide-*`は含めない）。`.slide-view`系・`.present__stage`の背景/文字色を`--slide-*`に差し替え、`canvasRenderer.ts`の`#ffffff`/`TEXT_COLOR(#1a1a1a)`と一致させた。
+- `src/hooks/useTheme.ts`（新規）: `ThemeId='system'|'light'|'dark'`、`readTheme()`/`applyTheme()`/`initTheme()`/`useTheme()`を実装。`localStorage`（キー`dokopre.theme`）読み書きはtry/catchで保護。`applyTheme()`が`document.documentElement.dataset.theme`に解決済み値（'light'|'dark'）を書き込み、Androidネイティブ時のみ`Capacitor.isNativePlatform()`で分岐し`SystemBars.setStyle()`をtry/catchで呼ぶ。`useTheme()`は`prefers-color-scheme`の`matchMedia('change')`を'system'選択時のみ購読する。
+- `src/main.tsx`: `createRoot(...).render(...)`前に`initTheme()`を1回呼び初回描画のフラッシュを防止。
+- `src/screens/HomeScreen.tsx`: ヘッダーに`useTheme().cycleTheme`を使った循環トグルボタン（自動→ライト→ダーク）を追加。`aria-label`で現在値を明示。
+- `index.html`: `theme-color`のlight/dark 2行を追加。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwrightで確認: (1) テーマトグルクリックで`document.documentElement.dataset.theme`と背景色（`getComputedStyle`）が即座に変化、`localStorage['dokopre.theme']`にも反映、(2) リロード後も選択テーマが復元、(3) **最重要**: ライト/ダーク双方で「PNG保存」を実行し生成PNGのSHA-256ハッシュが完全一致（ダークモードでも出力は常に白背景固定）。
+- ダークトークンのコントラスト比を計算で確認: `--bg`(#1c1c1e)/`--fg`(#e6e6e6)=13.6:1、`--bg`/`--muted`(#a3a3a3)=6.7:1、`--bg`/`--accent`(#6f93b3)=5.3:1、`--bg`/`--danger`(#e0776f)=5.7:1、いずれもWCAG AA(4.5:1)以上。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`成功（`android/app/build/outputs/apk/debug/app-debug.apk`）。
+
+### 次回開始位置
+- Reviewerによるレビュー（特にD-002/D-003で要求されるPNG/PDF出力とプレビューの構造的一致がスライド面固定トークンで維持されているかの確認）。承認後、T-011（複製・削除）へ進む。
+
+---
+
 ## 2026-08-07 T-008: レビュー承認・完了
 
 ### 実施内容
