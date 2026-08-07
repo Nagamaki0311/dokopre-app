@@ -24,11 +24,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBoundaryStat
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 24, fontFamily: 'sans-serif' }}>
+        <div style={{ padding: 24, fontFamily: 'sans-serif', background: '#ffffff', color: '#222222', minHeight: '100%' }}>
           <h1>エラーが発生しました</h1>
           <p>予期しない問題が発生し、画面を表示できませんでした。</p>
           <pre style={{ whiteSpace: 'pre-wrap', color: '#a33', fontSize: 12 }}>{this.state.error.message}</pre>
-          <button onClick={() => window.location.reload()}>再読み込み</button>
+          <button
+            onClick={() => window.location.reload()}
+            style={{ color: '#222222', background: '#f0f0f0', border: '1px solid #ccc', padding: '8px 16px' }}
+          >
+            再読み込み
+          </button>
         </div>
       );
     }

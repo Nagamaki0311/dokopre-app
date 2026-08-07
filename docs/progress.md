@@ -19,6 +19,79 @@
 
 ---
 
+## 2026-08-07 T-014: 最終レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `6817d63`の再レビューを委任した。ダークモード状態でErrorBoundaryフォールバックUIを実際に表示させ、h1/p/pre/buttonすべてが十分なコントラストで表示されることをPlaywright実測で確認。`npm test`/`npm run build`/`gradle assembleDebug`成功。同種見落としの最終確認でも他の裸のbutton要素が存在しないことを確認。Critical/High/Medium指摘なし、承認。
+
+### 結果
+- T-014（ダークモードの黒字不可視バグ）を完了とした。debug APKを再ビルドし、Userへ渡す。
+
+### 次回開始位置
+- 特になし。実機での最終確認はUser側で実施。
+
+---
+
+## 2026-08-07 T-014: ErrorBoundaryフォールバックUIの配色をCSS変数非依存に修正
+
+### 実施内容
+- Reviewer指摘（本ファイル直下のエントリ）に対応した。`src/App.tsx`の`ErrorBoundary`フォールバックUIは、想定外のクラッシュ時に表示される最後の砦のUIであり、`document.documentElement.dataset.theme`（テーマ状態）が信頼できるとは限らないため、`useTheme`フックやCSS変数（`var(--fg)`等）に依存せず、インラインstyleで明るい背景・濃い文字色を固定する方針とした。
+- 外側の`<div>`に`background: '#ffffff'`・`color: '#222222'`・`minHeight: '100%'`を追加し、body側のダーク背景（`var(--bg)`）を上書きして常に明るい背景で表示されるようにした。
+- 「再読み込み」`<button>`に`style={{ color: '#222222', background: '#f0f0f0', border: '1px solid #ccc', padding: '8px 16px' }}`を追加し、UAデフォルトのボタン配色に依存しない明示的な色指定とした。
+
+### 結果
+- `npm test`: 31 passed（4 files）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。
+- Playwright（`chromium`、`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`使用）で実測。検証のため`AppContent`に`window.location.hash === '#__test_error_boundary__'`で`throw`する一時的なテスト用フックを追加し、確認後は元に戻した（コミットには含まれない）。
+  - `localStorage.dokopre.theme = 'dark'`を設定した状態でErrorBoundaryのフォールバックUIを表示させ、`document.documentElement.dataset.theme`が`'dark'`であることを確認した上で、「再読み込み」ボタンの`getComputedStyle`を実測。文字色`rgb(34, 34, 34)`・背景色`rgb(240, 240, 240)`となり、UAデフォルトの黒文字（`rgb(0, 0, 0)`）ではなく、背景とのコントラストも十分であることを確認した。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`（`android/local.properties`の`sdk.dir=/opt/android-sdk`使用）: `BUILD SUCCESSFUL`、debug APKの再ビルドに成功した。
+
+### 次回開始位置
+- reviewerにこの修正のレビューを依頼する。承認後、Managerが完了判定を行いdebug APKをUserへ渡す。
+
+---
+
+## 2026-08-07 T-014: Reviewerによる敵対的検証（Medium指摘1件、差し戻し）
+
+### 実施内容
+- reviewerにcommit `e2ca4fa`のレビューを委任した。`.sheet__item`修正自体は正しく、ダークモード可視性・ライトモード非回帰・`--danger`カスケードすべてPlaywright実測でCONFIRMED。`npm test`/`npm run build`/`gradle assembleDebug`成功。
+- Developerの「他のbutton要素はすべてcolor明示済み」という報告に対し、Reviewerが全button要素を独立監査した結果、`src/App.tsx`の`ErrorBoundary`フォールバックUI内の「再読み込み」ボタン（`className`なしの素の`<button>`）が同一の不具合パターン（UAデフォルトのcolor継承なし）を抱えたまま未修正であることをMedium/CONFIRMEDとして発見した。ダークモード中に想定外のレンダーエラーが発生しErrorBoundaryが表示された場合、唯一の復旧手段である「再読み込み」ボタンの文字が見えなくなる。
+
+### 次回開始位置
+- developerに、`App.tsx`の`ErrorBoundary`フォールバックUI（ボタンおよび周辺要素）に明示的な色指定を追加する修正を依頼する。
+
+---
+
+## 2026-08-07 T-014: `.sheet__item`にcolor明示を追加して修正
+
+### 実施内容
+- `src/styles.css`の`.sheet__item`ルールに`color: var(--fg);`を追加した。`.sheet__item--danger`は`color: var(--danger)`をカスケードで上書きするため、修正後も削除ボタンの赤色表示は維持される。
+- Managerが確認済みの`.editor__tool`・`.editor__back`・`.fab`・`.filmstrip__add`・`.home__theme-toggle`・`.home__import`・`.editor__undo-bar__button`・`.editor__warning-badge`・`.template-picker__item`に加え、`<button>`を使う全classNameを`grep`で再確認した。追加で`.present__exit`（プレゼン終了ボタン）を発見したが`color: #fff`が既に明示済みで問題なし。他に見落としはなかった。
+
+### 結果
+- `npm test`: 31 passed（4 files）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。
+- Playwright（`chromium`、`/opt/pw-browsers`使用）でvite devサーバー上を実測。
+  - ダークモード（`localStorage.dokopre.theme = 'dark'`）: HomeScreenのデッキ長押しシート「複製」「JSON書き出し」「PDF書き出し」、EditorScreenのスライド操作シート「複製」、警告シート「閉じる」すべて`color: rgb(230, 230, 230)`（`--fg: #e6e6e6`相当）で表示された。「削除」ボタン（`.sheet__item--danger`）は`rgb(224, 119, 111)`（`--danger`）のままでカスケード上書きが正常に機能していることを確認した。
+  - ライトモード（`theme = 'light'`）: 同シートの通常ボタンは`rgb(34, 34, 34)`（`--fg: #222222`相当）となり、修正前後で見た目の変化がないことを確認した。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`（`android/local.properties`の`sdk.dir=/opt/android-sdk`使用）: `BUILD SUCCESSFUL`、`android/app/build/outputs/apk/debug/app-debug.apk`を再生成した。
+
+### 次回開始位置
+- reviewerにこの修正（`.sheet__item`への`color: var(--fg)`追加）のレビューを依頼する。承認後、Managerが完了判定を行いdebug APKをUserへ渡す。
+
+---
+
+## 2026-08-07 T-014: ダークモードの黒字不可視バグを発見
+
+### 実施内容
+- Userからダークモード時に一部テキストが黒字で見えないとの報告があった。`src/styles.css`をManagerが調査し、`.sheet__item`（`<button>`要素、HomeScreenのデッキ操作シート「複製/JSON書き出し/PDF書き出し」・EditorScreenのスライド操作シート「複製」・警告シートの「閉じる」等で使用）に`color`が明示的に指定されていないことを特定した。ブラウザは`<button>`にCSSの`color`継承をデフォルトで適用しない（UAスタイルシートが独自のボタン文字色を持つ）ため、body側で`color: var(--fg)`を設定していても`.sheet__item`はそれを継承せず、ダークモードの暗い背景上でも常にブラウザデフォルトの黒文字のまま表示され、事実上見えなくなっていた。`.sheet__item--danger`（削除ボタン）は`color: var(--danger)`を明示していたため今回の対象外。
+- 他の`<button>`要素（`.editor__tool`・`.editor__back`・`.fab`・`.filmstrip__add`・`.home__theme-toggle`・`.home__import`・`.editor__undo-bar__button`・`.editor__warning-badge`）はすべて`color`が明示済みであることを確認した。
+
+### 次回開始位置
+- developerに、`.sheet__item`へ`color: var(--fg);`を追加する修正を依頼する。
+
+---
+
 ## 2026-08-07 T-013: 最終レビュー承認・完了（T-009〜T-013一連の改善完了）
 
 ### 実施内容

@@ -279,6 +279,7 @@ button {
   text-align: left;
   font-size: 16px;
   border-radius: var(--radius);
+  color: var(--fg);
 }
 
 .sheet__item:active {
