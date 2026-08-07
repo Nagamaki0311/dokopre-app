@@ -24,7 +24,7 @@
 | T-007 | Android実機でのシステムバー（時刻表示・戻る/ホームボタン）とUIの重なりを解消 | 高 | 完了 | developer/reviewer | `env(safe-area-inset-*)`をヘッダー/ボトムシート/フィルムストリップ/Present上下バーに適用。Reviewer検証で指摘なし。User実機での最終確認待ち |
 | T-008 | Editor画面下部ツールバーがAndroid実機で潰れる不具合を解消 | 高 | 完了 | developer/reviewer | header/toolbar/filmstrip/undo-barにflex-shrink:0、preview/textをflex-grow比率(42:38)+min-heightへ変更。Reviewer検証でブロッキング指摘なし承認 |
 | T-009 | エディタ・プレゼンモード改善の計画作成（ダークモード/没入型プレゼン/複製削除/整列自動選択） | 高 | 完了 | planner | テーマシステム・全画面API・Undo設計・レイアウト整列拡張の方針を策定（D-003参照）。右揃え自動選択なし・整列語義はUser確認済み |
-| T-010 | ダークモード実装 | 高 | 実装中 | developer | スライド面固定トークンとPNG/PDF出力の一致(D-003最重要要件)はReviewerが実測で確認済み。Low指摘1件（theme-colorメタタグがテーマ切替に追従しない）を修正中 |
+| T-010 | ダークモード実装 | 高 | レビュー中 | developer | スライド面固定トークンとPNG/PDF出力の一致(D-003最重要要件)はReviewerが実測で確認済み。Low指摘1件（theme-colorメタタグがテーマ切替に追従しない）を修正済み、再レビュー待ち |
 | T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | 未着手 | developer | 既存の要約Undoを判別共用体に拡張して流用。複製時はBlock.idも新規採番 |
 | T-012 | プレゼンモードの没入型全画面表示 | 中 | 未着手 | developer | Android=SystemBars、Web/PWA=Fullscreen APIで環境分岐 |
 | T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | 未着手 | developer | LayoutResult.alignを新設、selectAlign()の判定ラダーで自動選択。レンダラは変更しない |

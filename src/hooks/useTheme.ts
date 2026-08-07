@@ -37,6 +37,16 @@ function resolveResolved(theme: ThemeId): 'light' | 'dark' {
   return theme;
 }
 
+const THEME_COLOR: Record<'light' | 'dark', string> = {
+  light: '#ffffff',
+  dark: '#1c1c1e',
+};
+
+function syncThemeColorMeta(resolved: 'light' | 'dark'): void {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', THEME_COLOR[resolved]);
+}
+
 async function syncSystemBars(resolved: 'light' | 'dark'): Promise<void> {
   if (!Capacitor.isNativePlatform()) return;
   try {
@@ -53,6 +63,7 @@ async function syncSystemBars(resolved: 'light' | 'dark'): Promise<void> {
 export function applyTheme(theme: ThemeId): void {
   const resolved = resolveResolved(theme);
   document.documentElement.dataset.theme = resolved;
+  syncThemeColorMeta(resolved);
   void syncSystemBars(resolved);
 }
 

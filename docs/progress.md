@@ -19,6 +19,22 @@
 
 ---
 
+## 2026-08-07 T-010: Low指摘（theme-color未追従）の修正
+
+### 実施内容
+- 直前のReviewer指摘（`index.html`の`theme-color`が`prefers-color-scheme`のみに追従し、アプリ内トグルでのテーマ変更に追従しない）を修正した。
+- `index.html`: `media`属性付きの静的2行（light/dark）を、`media`属性なしの単一`<meta name="theme-color" content="#ffffff" />`に統一。
+- `src/hooks/useTheme.ts`: `THEME_COLOR`（light: `#ffffff`, dark: `#1c1c1e`。既存のダークトークン`--bg`と同値）を追加し、`syncThemeColorMeta()`で`document.querySelector('meta[name="theme-color"]')`の`content`を解決済みテーマに応じて書き換える。`applyTheme()`内で`dataset.theme`の更新と同じタイミングで呼び出すことで、初回描画（`initTheme()`）・トグル操作・システム設定変更（`prefers-color-scheme`の`change`購読）のいずれでも追従する。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwright（Chromium、`colorScheme: 'light'`固定）で確認: 初期表示で`theme-color`は`#ffffff`。アプリ内トグルを「ダーク」に切り替えると`document.documentElement.dataset.theme`が`dark`になり、同時に`theme-color`メタタグの`content`が`#1c1c1e`に更新されることを確認（Reviewer報告の再現手順と同一条件）。
+
+### 次回開始位置
+- Reviewerに再レビューを依頼する。承認後、T-011（複製・削除）へ進む。
+
+---
+
 ## 2026-08-07 T-010: Reviewerによる敵対的検証（Low指摘1件、差し戻し）
 
 ### 実施内容
