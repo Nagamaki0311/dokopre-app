@@ -25,8 +25,8 @@
 | T-008 | Editor画面下部ツールバーがAndroid実機で潰れる不具合を解消 | 高 | 完了 | developer/reviewer | header/toolbar/filmstrip/undo-barにflex-shrink:0、preview/textをflex-grow比率(42:38)+min-heightへ変更。Reviewer検証でブロッキング指摘なし承認 |
 | T-009 | エディタ・プレゼンモード改善の計画作成（ダークモード/没入型プレゼン/複製削除/整列自動選択） | 高 | 完了 | planner | テーマシステム・全画面API・Undo設計・レイアウト整列拡張の方針を策定（D-003参照）。右揃え自動選択なし・整列語義はUser確認済み |
 | T-010 | ダークモード実装 | 高 | 完了 | developer/reviewer | スライド面固定トークンとPNG/PDF出力の一致(D-003最重要要件)を実測確認。Low指摘(theme-color)修正後、Critical/High/Medium/Low指摘なしで承認 |
-| T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | レビュー中 | developer | 既存の要約Undoを判別共用体`EditorUndo`に拡張して流用。複製時はBlock.idも新規採番。switchSlideの古いdeck参照バグも副次修正。Playwright実測でmarker独立性・Undo挙動・1枚時の削除不可を確認、npm test/build/APKビルド成功 |
-| T-012 | プレゼンモードの没入型全画面表示 | 中 | 未着手 | developer | Android=SystemBars、Web/PWA=Fullscreen APIで環境分岐 |
+| T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | 完了 | developer/reviewer | Block.id独立性・削除Undo順序・switchSlide副次修正・境界値をReviewerが実測確認、指摘事項なしで承認 |
+| T-012 | プレゼンモードの没入型全画面表示 | 中 | 実装中 | developer | Android=SystemBars、Web/PWA=Fullscreen APIで環境分岐 |
 | T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | 未着手 | developer | LayoutResult.alignを新設、selectAlign()の判定ラダーで自動選択。レンダラは変更しない |
 
 ## バックログ（未着手・優先度未確定）
