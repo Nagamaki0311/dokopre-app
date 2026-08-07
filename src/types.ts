@@ -91,5 +91,9 @@ export type LayoutResult = {
   template: TemplateId;
   boxes: LayoutBox[];
   warnings: LayoutWarning[];
+  /**
+   * レンダリングには使用しない。整列の候補選択結果を示すメタデータであり、
+   * 実際の視覚効果は boxes[].x / boxes[].w の補正（centerBox 時）で完結している。
+   */
   align: AlignId;
 };

@@ -69,8 +69,11 @@ export function selectAlign(analyzed: AnalyzedBlock[], template: TemplateId): Al
   }
 
   if (template === 'bullets') {
-    const items = analyzed.filter((b) => b.type !== 'heading' && b.type !== 'image');
-    const hasNewline = items.some((b) => b.type !== 'image' && b.text.includes('\n'));
+    const items = analyzed.filter(
+      (b): b is Exclude<AnalyzedBlock, { type: 'heading' | 'image' }> =>
+        b.type !== 'heading' && b.type !== 'image',
+    );
+    const hasNewline = items.some((b) => b.text.includes('\n'));
     if (items.length > 0 && items.length <= CENTER_BOX_MAX_BULLETS && !hasNewline) return 'centerBox';
     return 'left';
   }

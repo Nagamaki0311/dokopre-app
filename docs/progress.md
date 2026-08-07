@@ -19,6 +19,21 @@
 
 ---
 
+## 2026-08-07 T-013: Reviewer指摘（Low/Nit）の仕上げ対応
+
+### 実施内容
+- **Low**: `src/types.ts`の`LayoutResult.align`に、レンダリングには使用せず整列候補選択のメタデータである旨、実際の視覚効果は`boxes[].x`/`boxes[].w`の補正（centerBox時）で完結している旨のdocコメントを追加した。
+- **Nit**: `src/layout/templates.ts`の`selectAlign`関数、bullets分岐の`items.some((b) => b.type !== 'image' && ...)`から冗長な`b.type !== 'image'`を削除した。ただし`items`のfilterが`heading`/`image`を除外する複合条件のためTSの型絞り込みが効かず、削除に伴い明示的な型ガード（`(b): b is Exclude<AnalyzedBlock, { type: 'heading' | 'image' }> =>`)を追加してビルドエラーを解消した。
+
+### 結果
+- `npm test`: 31 passed（4 files）。
+- `npm run build`（`tsc && vite build`）: 型エラーなくビルド成功。
+
+### 次回開始位置
+- T-013をレビュー中に戻した。reviewerによる再検証待ち。承認後はManagerが完了判定を行う。
+
+---
+
 ## 2026-08-07 T-013: Reviewerによる敵対的検証（Low/Nit各1件、仕上げ対応）
 
 ### 実施内容
