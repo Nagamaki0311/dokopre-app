@@ -19,6 +19,18 @@
 
 ---
 
+## 2026-08-07 T-010: Reviewerによる敵対的検証（Low指摘1件、差し戻し）
+
+### 実施内容
+- reviewerにcommit `88520ef`のレビューを委任した。D-003最重要要件（スライド面のPNG/PDF出力一致）を自ら実測（PNGハッシュ一致）で裏付け、`.slide-view`系/`.present__stage`がテーマトークンを一切参照していないことを網羅的に確認。`useTheme.ts`のlocalStorage/matchMedia、コントラスト比、SystemBars分岐、localStorage不可環境でのクラッシュ耐性もすべてCONFIRMED（問題なし）。
+- Low/CONFIRMED 1件: `index.html`の`theme-color`メタタグが`prefers-color-scheme`のみに追従する静的2行のため、アプリ内トグルでOS設定と異なるテーマを手動選択した場合、PWA/ブラウザのUIクロム色（アドレスバー等）が追従しない。スライド内容・PNG/PDF出力には無関係。
+- 「テーマ変更時は全画面へ即時反映」という完了条件に関連するため、バックログ送りにせずこの場で修正する。
+
+### 次回開始位置
+- developerに、`applyTheme()`内で`theme-color`メタタグの`content`を解決済みテーマに応じて動的に書き換える修正を依頼する。
+
+---
+
 ## 2026-08-07 T-010: ダークモード実装
 
 ### 実施内容
