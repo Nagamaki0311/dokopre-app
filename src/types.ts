@@ -80,8 +80,20 @@ export type LayoutWarning = {
   message: string;
 };
 
+/**
+ * スライド全体の整列軸。既存の LayoutBox.align（'left'|'center'|'right', text-align相当）とは別軸で、
+ * ボックス自体の配置方法を表す（'centerBox' はボックスを内容幅に縮めて枠内中央配置する）。
+ * 'right' は将来の拡張用に型のみ用意しており、自動選択ロジック（selectAlign）では選ばれない。
+ */
+export type AlignId = 'left' | 'center' | 'centerBox' | 'right';
+
 export type LayoutResult = {
   template: TemplateId;
   boxes: LayoutBox[];
   warnings: LayoutWarning[];
+  /**
+   * レンダリングには使用しない。整列の候補選択結果を示すメタデータであり、
+   * 実際の視覚効果は boxes[].x / boxes[].w の補正（centerBox 時）で完結している。
+   */
+  align: AlignId;
 };

@@ -1,6 +1,6 @@
-import type { BoxRole, LayoutBox, LayoutResult, LayoutWarning, Slide } from '../types';
+import type { AlignId, BoxRole, LayoutBox, LayoutResult, LayoutWarning, Slide } from '../types';
 import { analyze, type AnalyzedBlock } from './analyze';
-import { selectTemplate, frames, type Rect } from './templates';
+import { selectTemplate, selectAlign, frames, type Rect } from './templates';
 import { wrapText, type TextMeasurer } from './measure';
 
 const MIN_FONT = 24;
@@ -10,6 +10,7 @@ const SHRUNK_FONT_WARNING_THRESHOLD = 32;
 const STACK_GAP = 24;
 const MAX_BULLETS = 6;
 const MAX_STACK_ITEMS = 4;
+const CENTER_BOX_MAX_WIDTH_RATIO = 0.5;
 
 type Assignment = {
   block: AnalyzedBlock;
@@ -128,6 +129,33 @@ function buildBox(assignment: Assignment, measurer: TextMeasurer, warnings: Layo
   };
 }
 
+/** ボックス群の実測最大行幅（内容幅）を返す。画像ボックス（lines なし）は無視する。 */
+function maxContentWidth(boxes: LayoutBox[], measurer: TextMeasurer): number {
+  let max = 0;
+  for (const box of boxes) {
+    for (const line of box.lines) {
+      const w = measurer.measureText(line, box.fontSize, box.weight);
+      if (w > max) max = w;
+    }
+  }
+  return max;
+}
+
+/**
+ * 同一フレームに属するボックス群を共通の contentW に縮め、枠内で水平中央に配置する（左右中央揃え）。
+ * ボックスは同一フレームから stackRects で分割されているため x/w は元々共通。それを contentW 基準に補正する。
+ */
+function applyCenterBox(boxes: LayoutBox[], contentW: number): void {
+  if (boxes.length === 0) return;
+  const frameX = boxes[0].x;
+  const frameW = boxes[0].w;
+  const newX = frameX + (frameW - contentW) / 2;
+  for (const box of boxes) {
+    box.x = newX;
+    box.w = contentW;
+  }
+}
+
 function assign(template: ReturnType<typeof selectTemplate>, analyzed: AnalyzedBlock[], warnings: LayoutWarning[]): Assignment[] {
   const fs = frames(template);
   const heading = analyzed.find((b) => b.type === 'heading');
@@ -212,5 +240,26 @@ export function layoutSlide(slide: Slide, measurer: TextMeasurer): LayoutResult 
     if (box) boxes.push(box);
   }
 
-  return { template, boxes, warnings };
+  let align: AlignId = selectAlign(analyzed, template);
+
+  if (align === 'centerBox') {
+    if (template === 'statement') {
+      const statementBoxes = boxes.filter((b) => b.role === 'statement');
+      applyCenterBox(statementBoxes, maxContentWidth(statementBoxes, measurer));
+    } else if (template === 'bullets') {
+      // bullets の centerBox 候補は実測幅で最終確定する（selectAlign は measurer 非依存のため候補のみ返す）。
+      const itemBoxes = boxes.filter((b) => b.role === 'bullet' || b.role === 'body');
+      const frameW = itemBoxes.length > 0 ? itemBoxes[0].w : 0;
+      const contentW = maxContentWidth(itemBoxes, measurer);
+      if (frameW > 0 && contentW < frameW * CENTER_BOX_MAX_WIDTH_RATIO) {
+        applyCenterBox(itemBoxes, contentW);
+      } else {
+        align = 'left';
+      }
+    } else {
+      align = 'left';
+    }
+  }
+
+  return { template, boxes, warnings, align };
 }

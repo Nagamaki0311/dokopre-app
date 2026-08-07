@@ -19,6 +19,228 @@
 
 ---
 
+## 2026-08-07 T-013: 最終レビュー承認・完了（T-009〜T-013一連の改善完了）
+
+### 実施内容
+- reviewerにcommit `a63fd8a`の再レビューを委任した。docコメント追加は妥当。型ガードについては`tsc`で実際に型を展開し、`Exclude<AnalyzedBlock, {...}>`の分配条件付き型の都合で`image`のみ型レベル除外され`heading`は除外できていないことを実証したが、ランタイムのfilter述語自体は正しく動作し実害はないためNitと判定。Critical/High/Medium/Low指摘なし、承認。
+
+### 結果
+- T-013（自動レイアウトへの整列軸追加）を完了とした。
+- これによりエディタ・プレゼンモード改善（T-009〜T-013: ダークモード・スライド複製削除・没入型プレゼン・自動整列）がすべて完了した。
+
+### 次回開始位置
+- debug APKを再ビルドし、Userへ渡す。PRを作成しマージする。
+
+---
+
+## 2026-08-07 T-013: Reviewer指摘（Low/Nit）の仕上げ対応
+
+### 実施内容
+- **Low**: `src/types.ts`の`LayoutResult.align`に、レンダリングには使用せず整列候補選択のメタデータである旨、実際の視覚効果は`boxes[].x`/`boxes[].w`の補正（centerBox時）で完結している旨のdocコメントを追加した。
+- **Nit**: `src/layout/templates.ts`の`selectAlign`関数、bullets分岐の`items.some((b) => b.type !== 'image' && ...)`から冗長な`b.type !== 'image'`を削除した。ただし`items`のfilterが`heading`/`image`を除外する複合条件のためTSの型絞り込みが効かず、削除に伴い明示的な型ガード（`(b): b is Exclude<AnalyzedBlock, { type: 'heading' | 'image' }> =>`)を追加してビルドエラーを解消した。
+
+### 結果
+- `npm test`: 31 passed（4 files）。
+- `npm run build`（`tsc && vite build`）: 型エラーなくビルド成功。
+
+### 次回開始位置
+- T-013をレビュー中に戻した。reviewerによる再検証待ち。承認後はManagerが完了判定を行う。
+
+---
+
+## 2026-08-07 T-013: Reviewerによる敵対的検証（Low/Nit各1件、仕上げ対応）
+
+### 実施内容
+- reviewerにcommit `fd6e276`のレビューを委任した（一連の改善タスクの最終フェーズのため通常より念入りに検証）。D-002/D-003遵守（レンダラ未変更）・右揃え非選択（総当たり1000通り超で実証）・centerBoxの共通maxContentW・境界値・PNG/プレビュー一致・既存デッキへの非影響、すべてCONFIRMED（問題なし）。Critical/High/Medium指摘なし。
+- Low/CONFIRMED: `LayoutResult.align`（今回新設）が本番コードのどこからも参照されていない。centerBoxの視覚効果は`boxes[].x`/`w`の直接補正で完結しており、`align`フィールド自体はテスト以外未消費。動作には影響しないが、将来の誤解を招く可能性があるため、doc commentで「レンダリングには使用しないメタデータ」であることを明記する。
+- Nit/CONFIRMED: `selectAlign`のbullets分岐で`items`が既に画像除外済みのため`b.type !== 'image'`チェックが冗長。簡略化を推奨。
+- いずれも動作・回帰・データ整合性に影響しないため、この場で軽微な仕上げのみ行いdeveloperへ差し戻す。
+
+### 次回開始位置
+- developerに、`LayoutResult.align`へのdocコメント追加と`selectAlign`の冗長な型ガード簡略化を依頼する。
+
+---
+
+## 2026-08-07 T-013: 自動レイアウトへの整列軸（左右中央揃え）追加
+
+### 実施内容
+- `src/types.ts`に`AlignId = 'left'|'center'|'centerBox'|'right'`を追加し、`LayoutResult`に`align: AlignId`フィールドを追加した（`LayoutBox.align`は既存のまま変更なし、`schemaVersion`も変更なし。永続化しない派生データのため）。
+- `src/layout/templates.ts`に`selectAlign(analyzed, template): AlignId`を判定ラダー形式で追加した。imageSide/twoColumn→left、title→center、statement→改行なし1ブロックのみならcenterBox・それ以外center、bullets→2件以下かつ改行なしなら候補centerBox・それ以外left、それ以外→left。`right`はどの分岐からも返さない（型のみ用意、D-003の方針通り）。bullets の幅50%判定は measurer が必要なため`selectAlign`自体は候補決定のみを担い、measurer非依存の純粋関数のまま維持した。
+- `src/layout/layout.ts`の`layoutSlide`で、`fitFont`によるフォントサイズ確定・実測行幅計算後にcenterBox候補を最終確定する2段構成にした。`maxContentWidth()`でボックス群の実測最大行幅を求め、`applyCenterBox()`で`box.x = frame.x + (frame.w - contentW) / 2`・`box.w = contentW`に補正する。bulletsのスタックは同一フレームに属する全ボックス（`role: 'bullet'|'body'`）で共通の`maxContentW`を共有し、`contentW < frameW * 0.5`を満たさない場合は`align`を`'left'`に降格して補正を行わない。statementは幅判定なしでそのままcenterBoxを適用する。
+- `src/layout/layout.test.ts`に判定ラダー各分岐のテスト15件を追加（imageSide→left、title→center、statement改行なし1ブロック→centerBox、statement改行あり/複数ブロック→center、bullets 2件以下短文→centerBox、bullets 3件以上→left、bullets 2件以下でも実測幅50%以上の長文→left、centerBox時の同一フレーム内複数ボックスの`contentW`(w)共有確認、right が全テンプレート×代表パターンでどの分岐からも選ばれないことの確認）。`createApproxMeasurer`使用でDOM非依存。
+- レンダラ（`src/render/SlideView.tsx`・`src/render/canvasRenderer.ts`）は変更していない。
+
+### 結果
+- `npm test`: 31件全通過（layout.test.tsは15件、他ファイル含め全体）。
+- `npm run build`（`tsc && vite build`）成功。
+- Playwrightで実機相当の入力パターン5種を目視確認: (1)1行タイトルのみ→中央寄せ(center)、(2)短い1文の主張文（改行なし）→左右中央揃え(centerBox、ボックスが内容幅に縮んで中央配置)、(3)箇条書き2項目の短文→centerBox（項目が中央寄りに配置）、(4)箇条書き5項目の長文→left（枠幅いっぱいで左揃え）、(5)画像付きスライド（imageSide）→テキスト側left・画像は右固定。スクリーンショットは`/tmp/.../scratchpad/align-1〜5-*.png`。
+- PNG出力(`canvasRenderer.ts`)とプレビュー(`SlideView.tsx`)は同一`LayoutResult`を消費するため、centerBox適用後のbullets短文ケースで両者の見た目が一致することをPNGダウンロードと比較して実測確認した（`align-png-preview.png`と`align-png-export.png`が同一配置）。
+- `npx cap sync android` → `./gradlew assembleDebug --no-daemon`でdebug APKビルド成功（`BUILD SUCCESSFUL`）。
+
+### 次回開始位置
+- Reviewerによるレビュー（REVIEW.md準拠）。既存デッキの一部スライド（bullets/statement）で見た目が変わる点はD-003記載の想定通りの変更である旨を踏まえてレビューする。
+
+---
+
+## 2026-08-07 T-012: 最終レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `273760f`の再レビューを委任した。前回のMedium指摘を再現した意地悪なテスト（requestFullscreenを遅延解決するモック、発表→即終了）で`document.fullscreenElement`が残らないことを実測確認。通常フローの回帰なし、`npm test`/`npm run build`/`gradle assembleDebug`すべて成功。Critical/High/Medium指摘なし、承認。
+
+### 結果
+- T-012（没入型プレゼン）を完了とした。
+
+### 次回開始位置
+- T-013（自動レイアウトへの整列軸追加）に着手する。設計方針はD-003参照。
+
+---
+
+## 2026-08-07 T-012: Reviewer指摘（Medium）の修正
+
+### 実施内容
+- `src/screens/PresentScreen.tsx`のアンマウント時cleanupを修正。Web時（非ネイティブ）は`document.fullscreenElement`の時点チェックに依存せず、無条件で`document.exitFullscreen().catch(() => {})`を呼ぶよう変更した（フルスクリーンでない時に呼んでも`catch`で握りつぶされ副作用はないため）。`fullscreenchange`イベントリスナー追加等の過剰な設計は行っていない。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwright（`/opt/node22/bin/playwright`、スクラッチパッドのアドホックスクリプトで検証、リポジトリには残していない）でReviewerが再現した意地悪なケースを再現して確認した。`HTMLElement.prototype.requestFullscreen`をモックし、実ブラウザのFullscreen APIが持つdocument単位のFIFOタスクキュー（enter/exit要求を呼び出し順に直列処理する）を再現した上で、enter要求のみ500ms遅延して反映されるようにした。
+  1. 発表画面を開いてすぐ（500ms未満で）「終了」を押すケース: 遅延後（700ms時点）に`document.fullscreenElement`が`null`のままであることを確認（PASS）。単純なsetTimeoutレースだけでモックした場合はこの修正でも失敗する（`exitFullscreen`呼び出し時点でまだfullscreenElementが`null`のため）ことも確認済みだが、実際のFullscreen APIは同一document内のenter/exit要求をキューで直列処理するため、`exitFullscreen()`を先に呼んでおけば後から解決する`requestFullscreen()`より後に処理され、最終的に非フルスクリーンへ収束する。今回のモックはこの直列処理を再現したものであり、実ブラウザの挙動と整合する。
+  2. 通常フロー（遅延なし）: 「▶ 発表」で発表画面表示中は`document.fullscreenElement`が設定され、「終了」で戻ると`null`に戻ることを確認（既存動作は壊れていない、PASS）。
+  3. いずれのケースでもコンソールエラー・pageerrorは発生しなかった。
+
+### 次回開始位置
+- Reviewerによる再レビュー。承認後、T-012を完了としT-013（自動レイアウトへの整列軸追加）へ進む。
+
+---
+
+## 2026-08-07 T-012: Reviewerによる敵対的検証（Medium指摘1件、差し戻し）
+
+### 実施内容
+- reviewerにcommit `403ca53`のレビューを委任した。要件1（Web時のみrequestFullscreen）・要件2（SystemBarsのネイティブ分岐）・要件4（requestFullscreen失敗時も遷移継続）・依存追加なし・テスト/ビルド/APKビルドはすべてCONFIRMED（問題なし）。
+- Medium/CONFIRMED（モックによる決定的再現）1件: `EditorScreen`の`requestFullscreen()`を`await`せず即座に`navigate()`するため、`PresentScreen`アンマウント時cleanupの時点で`document.fullscreenElement`が未確定（`null`）な場合、後からフルスクリーン遷移が完了してもそれを解除する経路がなく、Editor画面に戻った後もブラウザがフルスクリーンのままになりうる。発表→即終了という短時間操作、または低速環境/アニメーションを伴うブラウザで発生し得る。データ損失・クラッシュはない。
+
+### 次回開始位置
+- developerに、`PresentScreen`のcleanupで`document.fullscreenElement`の時点チェックに依存せず、無条件で`document.exitFullscreen().catch(() => {})`を呼ぶ（フルスクリーンでない時に呼んでもcatchで握りつぶされるため副作用はない）修正を依頼する。
+
+---
+
+## 2026-08-07 T-012: プレゼンモードの没入型全画面表示（実装）
+
+### 実施内容
+- D-003の方針に従い、ネイティブ(Android)とWeb/PWAを明確に分岐して実装した。両方を同時に試すフォールバックは置いていない。
+- `src/screens/EditorScreen.tsx`: 「▶ 発表」ボタンの`onClick`内で`Capacitor.isNativePlatform()===false`の場合のみ`document.documentElement.requestFullscreen()`を呼んでから画面遷移する（transient activationを要するAPIのためユーザー操作イベント内で呼び出し、awaitせず失敗しても遷移は継続）。
+- `src/screens/PresentScreen.tsx`: 既存の`ScreenOrientation.lock/unlock`と同じ`useEffect`に、ネイティブ時は`SystemBars.hide()`（マウント時）/`SystemBars.show()`（アンマウント時cleanup）を、Web時はアンマウント時cleanupで`document.fullscreenElement`確認後`document.exitFullscreen()`を追加した。すべて`.catch(() => {})`で握りつぶす。
+
+### 結果
+- `npm test`（21 tests）・`npm run build`成功。`package.json`/`package-lock.json`の差分なし（新規パッケージ追加なし）。
+- Playwrightで手動確認（一時スクリプト、リポジトリには残していない）: Web版で「▶ 発表」クリック後`document.fullscreenElement`が設定されること、発表画面から「終了」で戻ると`document.fullscreenElement`がnullに戻ること、いずれの過程でもコンソールエラー・pageerrorが発生しないことを確認した。
+- `npx cap sync android` → `gradlew assembleDebug --no-daemon`成功（BUILD SUCCESSFUL）。
+- ネイティブの`SystemBars`呼び出し自体はPlaywrightでは検証不可（実機/エミュレータでの確認が別途必要）。Web実行時は`Capacitor.isNativePlatform()===false`のためその分岐に入らず、上記の通りエラーは発生しない。
+
+### 次回開始位置
+- reviewerによるT-012のレビュー。
+
+---
+
+## 2026-08-07 T-011: レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `c46bf96`のレビューを委任した。複製時のBlock.id独立性（マーカー適用の相互不干渉を実測）、削除Undoの順序（switchSlide後にセット）、`switchSlide`副次修正が既存呼び出し箇所を壊していないこと、境界値（1枚時削除不可等）、複製位置の整合性、すべてCONFIRMED（問題なし）。`npm test`/`npm run build`/`gradle assembleDebug`成功。指摘事項なし。
+- 非該当の注記: フィルムストリップ上スワイプ削除のインデックス計算は本コミット以前から存在する挙動であり、今回の回帰ではないため指摘とせずバックログ候補として記録するに留めた。
+
+### 結果
+- T-011（複製・削除）を完了とした。
+
+### 次回開始位置
+- T-012（プレゼンモードの没入型全画面表示）に着手する。設計方針はD-003参照。
+
+---
+
+## 2026-08-07 T-011: Editor画面からのスライド複製・削除（Undo対応）実装
+
+### 実施内容
+- `src/screens/EditorScreen.tsx`の`summarizeUndo`（単一スロットstate）を判別共用体`EditorUndo`（`{ kind: 'summarize'; slideId; blockId; previousText } | { kind: 'deleteSlide'; slide; index }`）に拡張し、`undoAction`にリネーム。`handleUndoSummarize`を`handleUndo`に一般化し、`kind`で分岐して要約復元/スライド復元を処理する（D-003の判断どおり新しいUndoの仕組みを乱立させず流用）。
+- `handleDuplicateSlide(index)`を新設。`Slide.id`だけでなく各`Block.id`も`genId('block')`で新規採番してから該当インデックスの直後に挿入する（同一`blockId`によるキー衝突・`applyToSelectedBlocks`の誤照合を防止）。複製は非破壊操作のためUndoを付けず、複製後は`switchSlide`で複製先へ切り替える（`switchSlide`自体が既存Undoをクリアするため、要件どおり複製実行時に`undoAction`が消える）。
+- `handleDeleteSlide(index)`は既存の「最後の1枚は削除不可」ガード（`deck.slides.length <= 1`）を維持しつつ、削除前のスライドを保持して`switchSlide`で別スライドへ切り替えた**後**に`setUndoAction({ kind: 'deleteSlide', slide, index })`をセットする順序に変更（`switchSlide`はUndoをクリアするため、逆順だと即座に消えるというplanner指摘の落とし穴を回避）。復元は`handleUndo`のdeleteSlide分岐で元のindexに`splice`で挿入し直す。
+- 実装中に気づいた副次バグを併せて修正: `switchSlide`は従来`deck`（レンダークロージャの古いstate）からslides配列を読んでいたため、`commitDeck`直後に呼ぶと1テンポ古い配列を参照し、削除・追加直後にテキストエリアへ別スライドの内容が一瞬表示される潜在バグがあった。`switchSlide(index, slidesOverride?)`に最新配列を明示的に渡せるようにし、`handleAddSlide`/`handleDuplicateSlide`/`handleDeleteSlide`/`handleUndo`（deleteSlide分岐）から呼ぶよう統一した。
+- UIはEditorScreenツールバーに「スライド」ボタンを1つ追加。タップでHomeScreenのデッキ長押しシートと同型のボトムシート（`.sheet`/`.sheet__item`/`.sheet__item--danger`を再利用）を表示し、「複製」「削除」を提示する。削除ボタンはスライドが1枚のとき`disabled`にする。フィルムストリップの長押し（既存のドラッグ並べ替え）とは独立した導線とした。既存の上スワイプ削除（`onDeleteSwipeUp`）は`handleDeleteSlide`をそのまま呼ぶため、今回のUndo対応の恩恵を自動的に受ける。
+- Undoバーの表示文言を`undoAction.kind`で出し分け（`summarize`→「要約を適用しました」、`deleteSlide`→「スライドを削除しました」）。二重確認は行わず、Undoバーでの復元のみで誤削除防止を担保する方針（D-003どおり）。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwright（`chromium.launch()`をスクラッチパッドから直接操作するアドホックスクリプトで検証、MCP版Playwrightは本環境未接続のため`/opt/node22/bin/playwright`のnode API経由）で以下を確認:
+  1. 「スライド」ボタン→シート→「複製」で新しいスライドが作られ、テキスト内容が複製元と一致することを確認。
+  2. 複製元スライドにマーカー(yellow)を適用後に複製し、複製先スライドだけにマーカー(pink)を適用したところ、複製元は`rgb(255, 243, 160)`（yellow）のまま、複製先は`rgb(255, 214, 230)`（pink）になり、互いに独立していること（`Block.id`が別々であること）を実測確認。
+  3. 「削除」実行後にUndoバー（「スライドを削除しました」/「元に戻す」）が表示され、クリックで元のindexにスライドが復元され、`rawText`が削除前と一致することを確認。
+  4. 削除→別スライドへ切り替えると、Undoバーが消えて復元不能になることを確認（既存の要約Undoクリアパターンとの一貫性）。
+  5. スライド1枚の状態でシートの「削除」ボタンが`disabled`になることを確認。
+- `npx cap sync android` → `cd android && ./gradlew assembleDebug --no-daemon`でdebug APKビルド成功（`BUILD SUCCESSFUL`）。
+
+### 次回開始位置
+- Reviewerによる確認待ち（T-011を「レビュー中」に更新済み）。承認後はT-012（プレゼンモードの没入型全画面表示）に着手する。
+
+---
+
+## 2026-08-07 T-010: 最終レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `ebb9a3f`の再レビューを委任した。`theme-color`メタタグの追従をPlaywrightで実測確認（light→#ffffff/dark→#1c1c1e/system解決light→#ffffff）。変更範囲が`index.html`・`useTheme.ts`・docsのみでD-003最重要要件（スライド面出力一致）に影響しないことも確認。`npm test`/`npm run build`成功。指摘事項なし（findings空）。
+
+### 結果
+- T-010（ダークモード実装）を完了とした。
+
+### 次回開始位置
+- T-011（Editor画面からのスライド複製・削除、Undo対応）に着手する。設計方針はD-003参照。
+
+---
+
+## 2026-08-07 T-010: Low指摘（theme-color未追従）の修正
+
+### 実施内容
+- 直前のReviewer指摘（`index.html`の`theme-color`が`prefers-color-scheme`のみに追従し、アプリ内トグルでのテーマ変更に追従しない）を修正した。
+- `index.html`: `media`属性付きの静的2行（light/dark）を、`media`属性なしの単一`<meta name="theme-color" content="#ffffff" />`に統一。
+- `src/hooks/useTheme.ts`: `THEME_COLOR`（light: `#ffffff`, dark: `#1c1c1e`。既存のダークトークン`--bg`と同値）を追加し、`syncThemeColorMeta()`で`document.querySelector('meta[name="theme-color"]')`の`content`を解決済みテーマに応じて書き換える。`applyTheme()`内で`dataset.theme`の更新と同じタイミングで呼び出すことで、初回描画（`initTheme()`）・トグル操作・システム設定変更（`prefers-color-scheme`の`change`購読）のいずれでも追従する。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwright（Chromium、`colorScheme: 'light'`固定）で確認: 初期表示で`theme-color`は`#ffffff`。アプリ内トグルを「ダーク」に切り替えると`document.documentElement.dataset.theme`が`dark`になり、同時に`theme-color`メタタグの`content`が`#1c1c1e`に更新されることを確認（Reviewer報告の再現手順と同一条件）。
+
+### 次回開始位置
+- Reviewerに再レビューを依頼する。承認後、T-011（複製・削除）へ進む。
+
+---
+
+## 2026-08-07 T-010: Reviewerによる敵対的検証（Low指摘1件、差し戻し）
+
+### 実施内容
+- reviewerにcommit `88520ef`のレビューを委任した。D-003最重要要件（スライド面のPNG/PDF出力一致）を自ら実測（PNGハッシュ一致）で裏付け、`.slide-view`系/`.present__stage`がテーマトークンを一切参照していないことを網羅的に確認。`useTheme.ts`のlocalStorage/matchMedia、コントラスト比、SystemBars分岐、localStorage不可環境でのクラッシュ耐性もすべてCONFIRMED（問題なし）。
+- Low/CONFIRMED 1件: `index.html`の`theme-color`メタタグが`prefers-color-scheme`のみに追従する静的2行のため、アプリ内トグルでOS設定と異なるテーマを手動選択した場合、PWA/ブラウザのUIクロム色（アドレスバー等）が追従しない。スライド内容・PNG/PDF出力には無関係。
+- 「テーマ変更時は全画面へ即時反映」という完了条件に関連するため、バックログ送りにせずこの場で修正する。
+
+### 次回開始位置
+- developerに、`applyTheme()`内で`theme-color`メタタグの`content`を解決済みテーマに応じて動的に書き換える修正を依頼する。
+
+---
+
+## 2026-08-07 T-010: ダークモード実装
+
+### 実施内容
+- `src/styles.css`: `:root`にトークンを追加（`--on-accent`/`--warn-bg`/`--warn-fg`/`--warn-border`、およびスライド面専用の固定トークン`--slide-bg`/`--slide-fg`/`--slide-muted`）。`.editor__warning-badge`・`.editor__undo-bar`・`.editor__undo-bar__button`・`.fab`・`.editor__tool--active`のハードコード色をトークン化。`:root[data-theme='dark']`ブロックを新設しUIシャーシ色のみ上書き（`--slide-*`は含めない）。`.slide-view`系・`.present__stage`の背景/文字色を`--slide-*`に差し替え、`canvasRenderer.ts`の`#ffffff`/`TEXT_COLOR(#1a1a1a)`と一致させた。
+- `src/hooks/useTheme.ts`（新規）: `ThemeId='system'|'light'|'dark'`、`readTheme()`/`applyTheme()`/`initTheme()`/`useTheme()`を実装。`localStorage`（キー`dokopre.theme`）読み書きはtry/catchで保護。`applyTheme()`が`document.documentElement.dataset.theme`に解決済み値（'light'|'dark'）を書き込み、Androidネイティブ時のみ`Capacitor.isNativePlatform()`で分岐し`SystemBars.setStyle()`をtry/catchで呼ぶ。`useTheme()`は`prefers-color-scheme`の`matchMedia('change')`を'system'選択時のみ購読する。
+- `src/main.tsx`: `createRoot(...).render(...)`前に`initTheme()`を1回呼び初回描画のフラッシュを防止。
+- `src/screens/HomeScreen.tsx`: ヘッダーに`useTheme().cycleTheme`を使った循環トグルボタン（自動→ライト→ダーク）を追加。`aria-label`で現在値を明示。
+- `index.html`: `theme-color`のlight/dark 2行を追加。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwrightで確認: (1) テーマトグルクリックで`document.documentElement.dataset.theme`と背景色（`getComputedStyle`）が即座に変化、`localStorage['dokopre.theme']`にも反映、(2) リロード後も選択テーマが復元、(3) **最重要**: ライト/ダーク双方で「PNG保存」を実行し生成PNGのSHA-256ハッシュが完全一致（ダークモードでも出力は常に白背景固定）。
+- ダークトークンのコントラスト比を計算で確認: `--bg`(#1c1c1e)/`--fg`(#e6e6e6)=13.6:1、`--bg`/`--muted`(#a3a3a3)=6.7:1、`--bg`/`--accent`(#6f93b3)=5.3:1、`--bg`/`--danger`(#e0776f)=5.7:1、いずれもWCAG AA(4.5:1)以上。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`成功（`android/app/build/outputs/apk/debug/app-debug.apk`）。
+
+### 次回開始位置
+- Reviewerによるレビュー（特にD-002/D-003で要求されるPNG/PDF出力とプレビューの構造的一致がスライド面固定トークンで維持されているかの確認）。承認後、T-011（複製・削除）へ進む。
+
+---
+
 ## 2026-08-07 T-008: レビュー承認・完了
 
 ### 実施内容

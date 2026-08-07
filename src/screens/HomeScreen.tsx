@@ -10,6 +10,19 @@ import { downloadBlob } from '../export/exportPng';
 import { SlideView } from '../render/SlideView';
 import { useLongPress } from '../ui/gestures';
 import type { ScreenState } from '../hooks/useScreen';
+import { useTheme, type ThemeId } from '../hooks/useTheme';
+
+const THEME_LABEL: Record<ThemeId, string> = {
+  system: '自動',
+  light: 'ライト',
+  dark: 'ダーク',
+};
+
+const THEME_ICON: Record<ThemeId, string> = {
+  system: '🌗',
+  light: '☀️',
+  dark: '🌙',
+};
 
 type Props = {
   navigate: (next: ScreenState) => void;
@@ -50,6 +63,7 @@ export function HomeScreen({ navigate }: Props) {
   const [exportingPdf, setExportingPdf] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const measurer = useMemo(() => createCanvasMeasurer(), []);
+  const { theme, cycleTheme } = useTheme();
 
   const refresh = () => {
     listDecks().then(setDecks);
@@ -129,9 +143,18 @@ export function HomeScreen({ navigate }: Props) {
     <div className="home">
       <div className="home__header">
         <h1 className="home__title">どこでもプレゼン</h1>
-        <button className="home__import" onClick={() => fileInputRef.current?.click()}>
-          JSON読み込み
-        </button>
+        <div className="home__header-actions">
+          <button
+            className="home__theme-toggle"
+            onClick={cycleTheme}
+            aria-label={`テーマ: ${THEME_LABEL[theme]}（タップで切り替え）`}
+          >
+            {THEME_ICON[theme]}
+          </button>
+          <button className="home__import" onClick={() => fileInputRef.current?.click()}>
+            JSON読み込み
+          </button>
+        </div>
         <input
           ref={fileInputRef}
           type="file"

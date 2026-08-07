@@ -10,6 +10,16 @@
   --border: #e2e2e0;
   --accent: #4a6b8a;
   --danger: #b3453f;
+  --on-accent: #ffffff;
+  --warn-bg: #fff4e0;
+  --warn-fg: #8a5a00;
+  --warn-border: #f0d9a8;
+
+  /* スライド面はテーマから独立した固定トークン。canvasRenderer.tsのハードコード色と一致させ、
+     PNG/PDF出力とプレビューの見た目を常に一致させる（D-002/D-003）。 */
+  --slide-bg: #ffffff;
+  --slide-fg: #1a1a1a;
+  --slide-muted: #f5f5f3;
 
   --sp-1: 4px;
   --sp-2: 8px;
@@ -27,6 +37,21 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* UIシャーシ側の色のみ上書きする。--slide-*はここに含めない（PNG/PDF出力との一致を保つため、D-003）。 */
+:root[data-theme='dark'] {
+  --bg: #1c1c1e;
+  --bg-muted: #2a2a2d;
+  --fg: #e6e6e6;
+  --muted: #a3a3a3;
+  --border: #3a3a3d;
+  --accent: #6f93b3;
+  --danger: #e0776f;
+  --on-accent: #1c1c1e;
+  --warn-bg: #3a2f14;
+  --warn-fg: #e0b768;
+  --warn-border: #5a4a24;
 }
 
 * {
@@ -68,7 +93,7 @@ button {
 .slide-view {
   position: relative;
   overflow: hidden;
-  background: var(--bg);
+  background: var(--slide-bg);
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
@@ -76,13 +101,13 @@ button {
 .slide-view__stage {
   position: relative;
   transform-origin: top left;
-  background: var(--bg);
+  background: var(--slide-bg);
 }
 
 .slide-view__box {
   position: absolute;
   font-family: var(--font-sans);
-  color: var(--fg);
+  color: var(--slide-fg);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -95,7 +120,7 @@ button {
   position: absolute;
   overflow: hidden;
   border-radius: var(--radius);
-  background: var(--bg-muted);
+  background: var(--slide-muted);
 }
 
 /* ---------- App shell ---------- */
@@ -127,6 +152,23 @@ button {
   font-size: 24px;
   font-weight: 700;
   margin: 0;
+}
+
+.home__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.home__theme-toggle {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--radius);
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--fg);
 }
 
 .home__import {
@@ -201,7 +243,7 @@ button {
   height: 56px;
   border-radius: 50%;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   font-size: 28px;
   line-height: 1;
@@ -342,9 +384,9 @@ button {
   position: absolute;
   top: var(--sp-2);
   left: var(--sp-2);
-  background: #fff4e0;
-  color: #8a5a00;
-  border: 1px solid #f0d9a8;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border: 1px solid var(--warn-border);
   border-radius: var(--radius);
   padding: 2px var(--sp-2);
   font-size: 12px;
@@ -358,17 +400,17 @@ button {
   justify-content: space-between;
   gap: var(--sp-2);
   padding: var(--sp-2) var(--sp-3);
-  background: #fff4e0;
-  color: #8a5a00;
-  border-bottom: 1px solid #f0d9a8;
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border-bottom: 1px solid var(--warn-border);
   font-size: 13px;
   flex-shrink: 0;
 }
 
 .editor__undo-bar__button {
-  border: 1px solid #8a5a00;
+  border: 1px solid var(--warn-fg);
   background: transparent;
-  color: #8a5a00;
+  color: var(--warn-fg);
   border-radius: var(--radius);
   padding: 2px var(--sp-2);
   font-size: 13px;
@@ -411,7 +453,7 @@ button {
 .editor__tool--active {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
 }
 
 .editor__filmstrip {
@@ -469,7 +511,7 @@ button {
   aspect-ratio: 16 / 9;
   width: 100vw;
   max-height: 100vh;
-  background: #fff;
+  background: var(--slide-bg);
 }
 
 @media (orientation: portrait) {
