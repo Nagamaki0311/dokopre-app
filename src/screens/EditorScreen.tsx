@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
 import type { Asset, Block, Deck, MarkerColor, Slide, TemplateId } from '../types';
 import { loadDeck, getAsset, putAsset, scheduleAutosave } from '../storage/deckRepo';
 import { createSlide } from '../deckFactory';
@@ -412,7 +413,15 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
         <button className="editor__tool" onClick={() => setSlideSheetOpen(true)}>
           スライド
         </button>
-        <button className="editor__tool" onClick={() => navigate({ name: 'present', deckId: deck.id, index: slideIndex })}>
+        <button
+          className="editor__tool"
+          onClick={() => {
+            if (!Capacitor.isNativePlatform()) {
+              document.documentElement.requestFullscreen?.().catch(() => {});
+            }
+            navigate({ name: 'present', deckId: deck.id, index: slideIndex });
+          }}
+        >
           ▶ 発表
         </button>
         <button className="editor__tool" disabled={exportingPng} onClick={handleExportPng}>

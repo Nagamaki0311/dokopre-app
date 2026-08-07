@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScreenOrientation } from '@capacitor/screen-orientation';
+import { Capacitor, SystemBars } from '@capacitor/core';
 import type { Asset, Deck } from '../types';
 import { loadDeck, getAsset } from '../storage/deckRepo';
 import { layoutSlide } from '../layout/layout';
@@ -55,8 +56,18 @@ export function PresentScreen({ deckId, index, back }: Props) {
     // ネイティブ(Android)ではCapacitorプラグイン経由、Webでは同プラグインがブラウザのScreen Orientation APIに委譲する。
     // 対応していない/許可されない場合はCSSの16:9フィット（下記widthの計算）に任せる。
     ScreenOrientation.lock({ orientation: 'landscape' }).catch(() => {});
+    // 没入型表示: ネイティブはSystemBars、WebはrequestFullscreen（EditorScreenの▶発表クリック時に呼び出し済み）で切替済みのため
+    // ここでは終了時の後始末のみ行う（D-003: ネイティブ/Webは明確に分岐し、両方を試す実装はしない）。
+    if (Capacitor.isNativePlatform()) {
+      SystemBars.hide().catch(() => {});
+    }
     return () => {
       ScreenOrientation.unlock().catch(() => {});
+      if (Capacitor.isNativePlatform()) {
+        SystemBars.show().catch(() => {});
+      } else if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
     };
   }, []);
 

@@ -19,6 +19,24 @@
 
 ---
 
+## 2026-08-07 T-012: プレゼンモードの没入型全画面表示（実装）
+
+### 実施内容
+- D-003の方針に従い、ネイティブ(Android)とWeb/PWAを明確に分岐して実装した。両方を同時に試すフォールバックは置いていない。
+- `src/screens/EditorScreen.tsx`: 「▶ 発表」ボタンの`onClick`内で`Capacitor.isNativePlatform()===false`の場合のみ`document.documentElement.requestFullscreen()`を呼んでから画面遷移する（transient activationを要するAPIのためユーザー操作イベント内で呼び出し、awaitせず失敗しても遷移は継続）。
+- `src/screens/PresentScreen.tsx`: 既存の`ScreenOrientation.lock/unlock`と同じ`useEffect`に、ネイティブ時は`SystemBars.hide()`（マウント時）/`SystemBars.show()`（アンマウント時cleanup）を、Web時はアンマウント時cleanupで`document.fullscreenElement`確認後`document.exitFullscreen()`を追加した。すべて`.catch(() => {})`で握りつぶす。
+
+### 結果
+- `npm test`（21 tests）・`npm run build`成功。`package.json`/`package-lock.json`の差分なし（新規パッケージ追加なし）。
+- Playwrightで手動確認（一時スクリプト、リポジトリには残していない）: Web版で「▶ 発表」クリック後`document.fullscreenElement`が設定されること、発表画面から「終了」で戻ると`document.fullscreenElement`がnullに戻ること、いずれの過程でもコンソールエラー・pageerrorが発生しないことを確認した。
+- `npx cap sync android` → `gradlew assembleDebug --no-daemon`成功（BUILD SUCCESSFUL）。
+- ネイティブの`SystemBars`呼び出し自体はPlaywrightでは検証不可（実機/エミュレータでの確認が別途必要）。Web実行時は`Capacitor.isNativePlatform()===false`のためその分岐に入らず、上記の通りエラーは発生しない。
+
+### 次回開始位置
+- reviewerによるT-012のレビュー。
+
+---
+
 ## 2026-08-07 T-011: レビュー承認・完了
 
 ### 実施内容
