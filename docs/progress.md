@@ -19,6 +19,31 @@
 
 ---
 
+## 2026-08-07 T-011: Editor画面からのスライド複製・削除（Undo対応）実装
+
+### 実施内容
+- `src/screens/EditorScreen.tsx`の`summarizeUndo`（単一スロットstate）を判別共用体`EditorUndo`（`{ kind: 'summarize'; slideId; blockId; previousText } | { kind: 'deleteSlide'; slide; index }`）に拡張し、`undoAction`にリネーム。`handleUndoSummarize`を`handleUndo`に一般化し、`kind`で分岐して要約復元/スライド復元を処理する（D-003の判断どおり新しいUndoの仕組みを乱立させず流用）。
+- `handleDuplicateSlide(index)`を新設。`Slide.id`だけでなく各`Block.id`も`genId('block')`で新規採番してから該当インデックスの直後に挿入する（同一`blockId`によるキー衝突・`applyToSelectedBlocks`の誤照合を防止）。複製は非破壊操作のためUndoを付けず、複製後は`switchSlide`で複製先へ切り替える（`switchSlide`自体が既存Undoをクリアするため、要件どおり複製実行時に`undoAction`が消える）。
+- `handleDeleteSlide(index)`は既存の「最後の1枚は削除不可」ガード（`deck.slides.length <= 1`）を維持しつつ、削除前のスライドを保持して`switchSlide`で別スライドへ切り替えた**後**に`setUndoAction({ kind: 'deleteSlide', slide, index })`をセットする順序に変更（`switchSlide`はUndoをクリアするため、逆順だと即座に消えるというplanner指摘の落とし穴を回避）。復元は`handleUndo`のdeleteSlide分岐で元のindexに`splice`で挿入し直す。
+- 実装中に気づいた副次バグを併せて修正: `switchSlide`は従来`deck`（レンダークロージャの古いstate）からslides配列を読んでいたため、`commitDeck`直後に呼ぶと1テンポ古い配列を参照し、削除・追加直後にテキストエリアへ別スライドの内容が一瞬表示される潜在バグがあった。`switchSlide(index, slidesOverride?)`に最新配列を明示的に渡せるようにし、`handleAddSlide`/`handleDuplicateSlide`/`handleDeleteSlide`/`handleUndo`（deleteSlide分岐）から呼ぶよう統一した。
+- UIはEditorScreenツールバーに「スライド」ボタンを1つ追加。タップでHomeScreenのデッキ長押しシートと同型のボトムシート（`.sheet`/`.sheet__item`/`.sheet__item--danger`を再利用）を表示し、「複製」「削除」を提示する。削除ボタンはスライドが1枚のとき`disabled`にする。フィルムストリップの長押し（既存のドラッグ並べ替え）とは独立した導線とした。既存の上スワイプ削除（`onDeleteSwipeUp`）は`handleDeleteSlide`をそのまま呼ぶため、今回のUndo対応の恩恵を自動的に受ける。
+- Undoバーの表示文言を`undoAction.kind`で出し分け（`summarize`→「要約を適用しました」、`deleteSlide`→「スライドを削除しました」）。二重確認は行わず、Undoバーでの復元のみで誤削除防止を担保する方針（D-003どおり）。
+
+### 結果
+- `npm test`（21件）・`npm run build`成功。
+- Playwright（`chromium.launch()`をスクラッチパッドから直接操作するアドホックスクリプトで検証、MCP版Playwrightは本環境未接続のため`/opt/node22/bin/playwright`のnode API経由）で以下を確認:
+  1. 「スライド」ボタン→シート→「複製」で新しいスライドが作られ、テキスト内容が複製元と一致することを確認。
+  2. 複製元スライドにマーカー(yellow)を適用後に複製し、複製先スライドだけにマーカー(pink)を適用したところ、複製元は`rgb(255, 243, 160)`（yellow）のまま、複製先は`rgb(255, 214, 230)`（pink）になり、互いに独立していること（`Block.id`が別々であること）を実測確認。
+  3. 「削除」実行後にUndoバー（「スライドを削除しました」/「元に戻す」）が表示され、クリックで元のindexにスライドが復元され、`rawText`が削除前と一致することを確認。
+  4. 削除→別スライドへ切り替えると、Undoバーが消えて復元不能になることを確認（既存の要約Undoクリアパターンとの一貫性）。
+  5. スライド1枚の状態でシートの「削除」ボタンが`disabled`になることを確認。
+- `npx cap sync android` → `cd android && ./gradlew assembleDebug --no-daemon`でdebug APKビルド成功（`BUILD SUCCESSFUL`）。
+
+### 次回開始位置
+- Reviewerによる確認待ち（T-011を「レビュー中」に更新済み）。承認後はT-012（プレゼンモードの没入型全画面表示）に着手する。
+
+---
+
 ## 2026-08-07 T-010: 最終レビュー承認・完了
 
 ### 実施内容

@@ -31,6 +31,10 @@ const MARKER_CYCLE: MarkerColor[] = ['yellow', 'pink', 'blue'];
 const SUMMARIZE_RATIO = 0.6;
 const SUMMARIZE_MIN_CHARS = 20;
 
+type EditorUndo =
+  | { kind: 'summarize'; slideId: string; blockId: string; previousText: string }
+  | { kind: 'deleteSlide'; slide: Slide; index: number };
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -59,7 +63,8 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
   const [exportingPng, setExportingPng] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [warningSheetOpen, setWarningSheetOpen] = useState(false);
-  const [summarizeUndo, setSummarizeUndo] = useState<{ slideId: string; blockId: string; previousText: string } | null>(null);
+  const [slideSheetOpen, setSlideSheetOpen] = useState(false);
+  const [undoAction, setUndoAction] = useState<EditorUndo | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fontsReady = useFontsReady();
@@ -113,12 +118,13 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     commitDeck({ ...deck, slides });
   }
 
-  function switchSlide(index: number) {
-    if (!deck) return;
-    const clamped = Math.max(0, Math.min(deck.slides.length - 1, index));
+  function switchSlide(index: number, slidesOverride?: Slide[]) {
+    const slides = slidesOverride ?? deck?.slides;
+    if (!slides) return;
+    const clamped = Math.max(0, Math.min(slides.length - 1, index));
     setSlideIndex(clamped);
-    setRawText(blocksToText(deck.slides[clamped]?.blocks ?? []));
-    setSummarizeUndo(null);
+    setRawText(blocksToText(slides[clamped]?.blocks ?? []));
+    setUndoAction(null);
   }
 
   const previewSwipe = useSwipe({
@@ -132,7 +138,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const parsed = parseText(value);
     const merged = mergeBlocks(currentSlide.blocks, parsed);
     updateSlideBlocks(slideIndex, merged);
-    setSummarizeUndo(null);
+    setUndoAction(null);
   }
 
   function applyToSelectedBlocks(fn: (b: Block) => Block) {
@@ -149,11 +155,12 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const blocks = currentSlide.blocks.map((b) => (targetIds.has(b.id) ? fn(b) : b));
     updateSlideBlocks(slideIndex, blocks);
     if (
-      summarizeUndo &&
-      summarizeUndo.slideId === currentSlide.id &&
-      targetIds.has(summarizeUndo.blockId)
+      undoAction &&
+      undoAction.kind === 'summarize' &&
+      undoAction.slideId === currentSlide.id &&
+      targetIds.has(undoAction.blockId)
     ) {
-      setSummarizeUndo(null);
+      setUndoAction(null);
     }
   }
 
@@ -196,24 +203,33 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const blocks = currentSlide.blocks.map((b) => (b.id === blockId ? { ...b, text: summarized } : b));
     updateSlideBlocks(slideIndex, blocks);
     setRawText(blocksToText(blocks));
-    setSummarizeUndo({ slideId: currentSlide.id, blockId, previousText });
+    setUndoAction({ kind: 'summarize', slideId: currentSlide.id, blockId, previousText });
     setWarningSheetOpen(false);
   }
 
-  function handleUndoSummarize() {
-    if (!deck || !summarizeUndo) return;
-    const slide = deck.slides.find((s) => s.id === summarizeUndo.slideId);
-    if (!slide) {
-      setSummarizeUndo(null);
-      return;
+  function handleUndo() {
+    if (!deck || !undoAction) return;
+    if (undoAction.kind === 'summarize') {
+      const slide = deck.slides.find((s) => s.id === undoAction.slideId);
+      if (!slide) {
+        setUndoAction(null);
+        return;
+      }
+      const blocks = slide.blocks.map((b) =>
+        b.id === undoAction.blockId ? { ...b, text: undoAction.previousText } : b,
+      );
+      const slides = deck.slides.map((s) => (s.id === undoAction.slideId ? { ...s, blocks } : s));
+      commitDeck({ ...deck, slides });
+      if (currentSlide?.id === undoAction.slideId) setRawText(blocksToText(blocks));
+      setUndoAction(null);
+    } else {
+      const slides = deck.slides.slice();
+      const insertAt = Math.min(undoAction.index, slides.length);
+      slides.splice(insertAt, 0, undoAction.slide);
+      commitDeck({ ...deck, slides });
+      setUndoAction(null);
+      switchSlide(insertAt, slides);
     }
-    const blocks = slide.blocks.map((b) =>
-      b.id === summarizeUndo.blockId ? { ...b, text: summarizeUndo.previousText } : b,
-    );
-    const slides = deck.slides.map((s) => (s.id === summarizeUndo.slideId ? { ...s, blocks } : s));
-    commitDeck({ ...deck, slides });
-    if (currentSlide?.id === summarizeUndo.slideId) setRawText(blocksToText(blocks));
-    setSummarizeUndo(null);
   }
 
   async function handleAddImage(e: React.ChangeEvent<HTMLInputElement>) {
@@ -280,14 +296,27 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const slide = createSlide();
     const slides = [...deck.slides, slide];
     commitDeck({ ...deck, slides });
-    switchSlide(slides.length - 1);
+    switchSlide(slides.length - 1, slides);
+  }
+
+  function handleDuplicateSlide(index: number) {
+    if (!deck) return;
+    const source = deck.slides[index];
+    if (!source) return;
+    const blocks = source.blocks.map((b) => ({ ...b, id: genId('block') }));
+    const slide: Slide = { ...source, id: genId('slide'), blocks };
+    const slides = [...deck.slides.slice(0, index + 1), slide, ...deck.slides.slice(index + 1)];
+    commitDeck({ ...deck, slides });
+    switchSlide(index + 1, slides);
   }
 
   function handleDeleteSlide(index: number) {
     if (!deck || deck.slides.length <= 1) return;
+    const removed = deck.slides[index];
     const slides = deck.slides.filter((_, i) => i !== index);
     commitDeck({ ...deck, slides });
-    switchSlide(Math.min(index, slides.length - 1));
+    switchSlide(Math.min(index, slides.length - 1), slides);
+    setUndoAction({ kind: 'deleteSlide', slide: removed, index });
   }
 
   function handleReorder(from: number, to: number) {
@@ -329,10 +358,10 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
         )}
       </div>
 
-      {summarizeUndo && (
+      {undoAction && (
         <div className="editor__undo-bar">
-          <span>要約を適用しました</span>
-          <button className="editor__undo-bar__button" onClick={handleUndoSummarize}>
+          <span>{undoAction.kind === 'summarize' ? '要約を適用しました' : 'スライドを削除しました'}</span>
+          <button className="editor__undo-bar__button" onClick={handleUndo}>
             元に戻す
           </button>
         </div>
@@ -379,6 +408,9 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
         </button>
         <button className={`editor__tool${notesOpen ? ' editor__tool--active' : ''}`} onClick={() => setNotesOpen((v) => !v)}>
           メモ
+        </button>
+        <button className="editor__tool" onClick={() => setSlideSheetOpen(true)}>
+          スライド
         </button>
         <button className="editor__tool" onClick={() => navigate({ name: 'present', deckId: deck.id, index: slideIndex })}>
           ▶ 発表
@@ -430,6 +462,32 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
                 />
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {slideSheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setSlideSheetOpen(false)}>
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="sheet__item"
+              onClick={() => {
+                handleDuplicateSlide(slideIndex);
+                setSlideSheetOpen(false);
+              }}
+            >
+              複製
+            </button>
+            <button
+              className="sheet__item sheet__item--danger"
+              disabled={deck.slides.length <= 1}
+              onClick={() => {
+                handleDeleteSlide(slideIndex);
+                setSlideSheetOpen(false);
+              }}
+            >
+              削除
+            </button>
           </div>
         </div>
       )}
