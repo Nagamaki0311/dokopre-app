@@ -23,6 +23,7 @@
 | T-006 | Phase 4: Capacitor Android化・APKビルド・納品ドキュメント一式 | 高 | 完了 | developer/reviewer | debug APKビルド成功、納品docs一式作成。Reviewer指摘のファイル名サニタイズ修正後、Critical/High/Medium指摘なしで承認。Phase 1〜4すべて完了 |
 | T-007 | Android実機でのシステムバー（時刻表示・戻る/ホームボタン）とUIの重なりを解消 | 高 | 完了 | developer/reviewer | `env(safe-area-inset-*)`をヘッダー/ボトムシート/フィルムストリップ/Present上下バーに適用。Reviewer検証で指摘なし。User実機での最終確認待ち |
 | T-008 | Editor画面下部ツールバーがAndroid実機で潰れる不具合を解消 | 高 | 完了 | developer/reviewer | header/toolbar/filmstrip/undo-barにflex-shrink:0、preview/textをflex-grow比率(42:38)+min-heightへ変更。Reviewer検証でブロッキング指摘なし承認 |
+| T-009 | エディタ・プレゼンモード改善の計画作成（ダークモード/没入型プレゼン/複製削除/整列自動選択） | 高 | 計画中 | planner | Issue原文を元に、テーマシステム・全画面API・Undo設計・レイアウト整列拡張の方針をplannerが立案中 |
 
 ## バックログ（未着手・優先度未確定）
 
