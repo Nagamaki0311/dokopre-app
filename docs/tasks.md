@@ -27,7 +27,7 @@
 | T-010 | ダークモード実装 | 高 | 完了 | developer/reviewer | スライド面固定トークンとPNG/PDF出力の一致(D-003最重要要件)を実測確認。Low指摘(theme-color)修正後、Critical/High/Medium/Low指摘なしで承認 |
 | T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | 完了 | developer/reviewer | Block.id独立性・削除Undo順序・switchSlide副次修正・境界値をReviewerが実測確認、指摘事項なしで承認 |
 | T-012 | プレゼンモードの没入型全画面表示 | 中 | 完了 | developer/reviewer | Reviewerが意地悪な再現手順（requestFullscreen遅延解決モック）で修正を実測確認。Critical/High/Medium指摘なしで承認 |
-| T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | 実装中 | developer | LayoutResult.alignを新設、selectAlign()の判定ラダーで自動選択。レンダラは変更しない |
+| T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | レビュー中 | developer | LayoutResult.alignを新設、selectAlign()の判定ラダーで自動選択。レンダラは変更しない。npm test/build/Playwright/gradle assembleDebugすべて成功 |
 
 ## バックログ（未着手・優先度未確定）
 

@@ -19,6 +19,27 @@
 
 ---
 
+## 2026-08-07 T-013: 自動レイアウトへの整列軸（左右中央揃え）追加
+
+### 実施内容
+- `src/types.ts`に`AlignId = 'left'|'center'|'centerBox'|'right'`を追加し、`LayoutResult`に`align: AlignId`フィールドを追加した（`LayoutBox.align`は既存のまま変更なし、`schemaVersion`も変更なし。永続化しない派生データのため）。
+- `src/layout/templates.ts`に`selectAlign(analyzed, template): AlignId`を判定ラダー形式で追加した。imageSide/twoColumn→left、title→center、statement→改行なし1ブロックのみならcenterBox・それ以外center、bullets→2件以下かつ改行なしなら候補centerBox・それ以外left、それ以外→left。`right`はどの分岐からも返さない（型のみ用意、D-003の方針通り）。bullets の幅50%判定は measurer が必要なため`selectAlign`自体は候補決定のみを担い、measurer非依存の純粋関数のまま維持した。
+- `src/layout/layout.ts`の`layoutSlide`で、`fitFont`によるフォントサイズ確定・実測行幅計算後にcenterBox候補を最終確定する2段構成にした。`maxContentWidth()`でボックス群の実測最大行幅を求め、`applyCenterBox()`で`box.x = frame.x + (frame.w - contentW) / 2`・`box.w = contentW`に補正する。bulletsのスタックは同一フレームに属する全ボックス（`role: 'bullet'|'body'`）で共通の`maxContentW`を共有し、`contentW < frameW * 0.5`を満たさない場合は`align`を`'left'`に降格して補正を行わない。statementは幅判定なしでそのままcenterBoxを適用する。
+- `src/layout/layout.test.ts`に判定ラダー各分岐のテスト15件を追加（imageSide→left、title→center、statement改行なし1ブロック→centerBox、statement改行あり/複数ブロック→center、bullets 2件以下短文→centerBox、bullets 3件以上→left、bullets 2件以下でも実測幅50%以上の長文→left、centerBox時の同一フレーム内複数ボックスの`contentW`(w)共有確認、right が全テンプレート×代表パターンでどの分岐からも選ばれないことの確認）。`createApproxMeasurer`使用でDOM非依存。
+- レンダラ（`src/render/SlideView.tsx`・`src/render/canvasRenderer.ts`）は変更していない。
+
+### 結果
+- `npm test`: 31件全通過（layout.test.tsは15件、他ファイル含め全体）。
+- `npm run build`（`tsc && vite build`）成功。
+- Playwrightで実機相当の入力パターン5種を目視確認: (1)1行タイトルのみ→中央寄せ(center)、(2)短い1文の主張文（改行なし）→左右中央揃え(centerBox、ボックスが内容幅に縮んで中央配置)、(3)箇条書き2項目の短文→centerBox（項目が中央寄りに配置）、(4)箇条書き5項目の長文→left（枠幅いっぱいで左揃え）、(5)画像付きスライド（imageSide）→テキスト側left・画像は右固定。スクリーンショットは`/tmp/.../scratchpad/align-1〜5-*.png`。
+- PNG出力(`canvasRenderer.ts`)とプレビュー(`SlideView.tsx`)は同一`LayoutResult`を消費するため、centerBox適用後のbullets短文ケースで両者の見た目が一致することをPNGダウンロードと比較して実測確認した（`align-png-preview.png`と`align-png-export.png`が同一配置）。
+- `npx cap sync android` → `./gradlew assembleDebug --no-daemon`でdebug APKビルド成功（`BUILD SUCCESSFUL`）。
+
+### 次回開始位置
+- Reviewerによるレビュー（REVIEW.md準拠）。既存デッキの一部スライド（bullets/statement）で見た目が変わる点はD-003記載の想定通りの変更である旨を踏まえてレビューする。
+
+---
+
 ## 2026-08-07 T-012: 最終レビュー承認・完了
 
 ### 実施内容

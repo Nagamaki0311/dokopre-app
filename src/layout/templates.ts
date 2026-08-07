@@ -1,4 +1,4 @@
-import type { TemplateId } from '../types';
+import type { AlignId, TemplateId } from '../types';
 import type { AnalyzedBlock } from './analyze';
 import { SLIDE_W, SLIDE_H } from '../types';
 
@@ -46,6 +46,36 @@ export function selectTemplate(analyzed: AnalyzedBlock[], hint: TemplateId | 'au
   if (nonHeadingNonImage.length === 2) return 'twoColumn';
 
   return 'bullets';
+}
+
+const CENTER_BOX_MAX_BULLETS = 2;
+
+/**
+ * テンプレートから整列軸候補 (AlignId) を判定ラダー形式で決定する。
+ * 実測幅が必要な分岐（bullets の centerBox 候補）は「候補」を返すのみとし、
+ * measurer を用いた最終確定（幅50%未満か等）は layout.ts 側で行う（本関数は measurer 非依存の純粋関数のまま）。
+ * 'right' はどの分岐からも返さない（自動選択の対象外。将来拡張用に型のみ用意）。
+ */
+export function selectAlign(analyzed: AnalyzedBlock[], template: TemplateId): AlignId {
+  if (template === 'imageSide') return 'left';
+  if (template === 'twoColumn') return 'left';
+  if (template === 'title') return 'center';
+
+  if (template === 'statement') {
+    const textBlocks = analyzed.filter((b) => b.type !== 'image');
+    const single = textBlocks.length === 1 ? textBlocks[0] : undefined;
+    if (single && !single.text.includes('\n')) return 'centerBox';
+    return 'center';
+  }
+
+  if (template === 'bullets') {
+    const items = analyzed.filter((b) => b.type !== 'heading' && b.type !== 'image');
+    const hasNewline = items.some((b) => b.type !== 'image' && b.text.includes('\n'));
+    if (items.length > 0 && items.length <= CENTER_BOX_MAX_BULLETS && !hasNewline) return 'centerBox';
+    return 'left';
+  }
+
+  return 'left';
 }
 
 /**
