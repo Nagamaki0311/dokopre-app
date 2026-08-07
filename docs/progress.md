@@ -19,6 +19,19 @@
 
 ---
 
+## 2026-08-07 T-012: 最終レビュー承認・完了
+
+### 実施内容
+- reviewerにcommit `273760f`の再レビューを委任した。前回のMedium指摘を再現した意地悪なテスト（requestFullscreenを遅延解決するモック、発表→即終了）で`document.fullscreenElement`が残らないことを実測確認。通常フローの回帰なし、`npm test`/`npm run build`/`gradle assembleDebug`すべて成功。Critical/High/Medium指摘なし、承認。
+
+### 結果
+- T-012（没入型プレゼン）を完了とした。
+
+### 次回開始位置
+- T-013（自動レイアウトへの整列軸追加）に着手する。設計方針はD-003参照。
+
+---
+
 ## 2026-08-07 T-012: Reviewer指摘（Medium）の修正
 
 ### 実施内容
