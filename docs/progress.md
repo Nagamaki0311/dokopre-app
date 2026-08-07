@@ -19,6 +19,17 @@
 
 ---
 
+## 2026-08-07 T-014: Reviewerによる敵対的検証（Medium指摘1件、差し戻し）
+
+### 実施内容
+- reviewerにcommit `e2ca4fa`のレビューを委任した。`.sheet__item`修正自体は正しく、ダークモード可視性・ライトモード非回帰・`--danger`カスケードすべてPlaywright実測でCONFIRMED。`npm test`/`npm run build`/`gradle assembleDebug`成功。
+- Developerの「他のbutton要素はすべてcolor明示済み」という報告に対し、Reviewerが全button要素を独立監査した結果、`src/App.tsx`の`ErrorBoundary`フォールバックUI内の「再読み込み」ボタン（`className`なしの素の`<button>`）が同一の不具合パターン（UAデフォルトのcolor継承なし）を抱えたまま未修正であることをMedium/CONFIRMEDとして発見した。ダークモード中に想定外のレンダーエラーが発生しErrorBoundaryが表示された場合、唯一の復旧手段である「再読み込み」ボタンの文字が見えなくなる。
+
+### 次回開始位置
+- developerに、`App.tsx`の`ErrorBoundary`フォールバックUI（ボタンおよび周辺要素）に明示的な色指定を追加する修正を依頼する。
+
+---
+
 ## 2026-08-07 T-014: `.sheet__item`にcolor明示を追加して修正
 
 ### 実施内容
