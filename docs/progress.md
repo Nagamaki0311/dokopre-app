@@ -19,6 +19,19 @@
 
 ---
 
+## 2026-08-07 T-013: Reviewerによる敵対的検証（Low/Nit各1件、仕上げ対応）
+
+### 実施内容
+- reviewerにcommit `fd6e276`のレビューを委任した（一連の改善タスクの最終フェーズのため通常より念入りに検証）。D-002/D-003遵守（レンダラ未変更）・右揃え非選択（総当たり1000通り超で実証）・centerBoxの共通maxContentW・境界値・PNG/プレビュー一致・既存デッキへの非影響、すべてCONFIRMED（問題なし）。Critical/High/Medium指摘なし。
+- Low/CONFIRMED: `LayoutResult.align`（今回新設）が本番コードのどこからも参照されていない。centerBoxの視覚効果は`boxes[].x`/`w`の直接補正で完結しており、`align`フィールド自体はテスト以外未消費。動作には影響しないが、将来の誤解を招く可能性があるため、doc commentで「レンダリングには使用しないメタデータ」であることを明記する。
+- Nit/CONFIRMED: `selectAlign`のbullets分岐で`items`が既に画像除外済みのため`b.type !== 'image'`チェックが冗長。簡略化を推奨。
+- いずれも動作・回帰・データ整合性に影響しないため、この場で軽微な仕上げのみ行いdeveloperへ差し戻す。
+
+### 次回開始位置
+- developerに、`LayoutResult.align`へのdocコメント追加と`selectAlign`の冗長な型ガード簡略化を依頼する。
+
+---
+
 ## 2026-08-07 T-013: 自動レイアウトへの整列軸（左右中央揃え）追加
 
 ### 実施内容
