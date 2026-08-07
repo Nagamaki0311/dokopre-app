@@ -19,6 +19,17 @@
 
 ---
 
+## 2026-08-07 T-012: Reviewerによる敵対的検証（Medium指摘1件、差し戻し）
+
+### 実施内容
+- reviewerにcommit `403ca53`のレビューを委任した。要件1（Web時のみrequestFullscreen）・要件2（SystemBarsのネイティブ分岐）・要件4（requestFullscreen失敗時も遷移継続）・依存追加なし・テスト/ビルド/APKビルドはすべてCONFIRMED（問題なし）。
+- Medium/CONFIRMED（モックによる決定的再現）1件: `EditorScreen`の`requestFullscreen()`を`await`せず即座に`navigate()`するため、`PresentScreen`アンマウント時cleanupの時点で`document.fullscreenElement`が未確定（`null`）な場合、後からフルスクリーン遷移が完了してもそれを解除する経路がなく、Editor画面に戻った後もブラウザがフルスクリーンのままになりうる。発表→即終了という短時間操作、または低速環境/アニメーションを伴うブラウザで発生し得る。データ損失・クラッシュはない。
+
+### 次回開始位置
+- developerに、`PresentScreen`のcleanupで`document.fullscreenElement`の時点チェックに依存せず、無条件で`document.exitFullscreen().catch(() => {})`を呼ぶ（フルスクリーンでない時に呼んでもcatchで握りつぶされるため副作用はない）修正を依頼する。
+
+---
+
 ## 2026-08-07 T-012: プレゼンモードの没入型全画面表示（実装）
 
 ### 実施内容

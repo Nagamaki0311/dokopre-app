@@ -26,7 +26,7 @@
 | T-009 | エディタ・プレゼンモード改善の計画作成（ダークモード/没入型プレゼン/複製削除/整列自動選択） | 高 | 完了 | planner | テーマシステム・全画面API・Undo設計・レイアウト整列拡張の方針を策定（D-003参照）。右揃え自動選択なし・整列語義はUser確認済み |
 | T-010 | ダークモード実装 | 高 | 完了 | developer/reviewer | スライド面固定トークンとPNG/PDF出力の一致(D-003最重要要件)を実測確認。Low指摘(theme-color)修正後、Critical/High/Medium/Low指摘なしで承認 |
 | T-011 | Editor画面からのスライド複製・削除（Undo対応） | 中 | 完了 | developer/reviewer | Block.id独立性・削除Undo順序・switchSlide副次修正・境界値をReviewerが実測確認、指摘事項なしで承認 |
-| T-012 | プレゼンモードの没入型全画面表示 | 中 | レビュー中 | developer | Android=SystemBars、Web/PWA=Fullscreen APIで環境分岐 |
+| T-012 | プレゼンモードの没入型全画面表示 | 中 | 実装中 | developer | Reviewer指摘のMedium1件（発表を即終了するとrequestFullscreen解決タイミング次第でexitFullscreenが漏れる）を修正中 |
 | T-013 | 自動レイアウトへの整列軸（左右中央揃え含む）追加 | 中 | 未着手 | developer | LayoutResult.alignを新設、selectAlign()の判定ラダーで自動選択。レンダラは変更しない |
 
 ## バックログ（未着手・優先度未確定）
