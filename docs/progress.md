@@ -19,6 +19,25 @@
 
 ---
 
+## 2026-08-07 T-014: ErrorBoundaryフォールバックUIの配色をCSS変数非依存に修正
+
+### 実施内容
+- Reviewer指摘（本ファイル直下のエントリ）に対応した。`src/App.tsx`の`ErrorBoundary`フォールバックUIは、想定外のクラッシュ時に表示される最後の砦のUIであり、`document.documentElement.dataset.theme`（テーマ状態）が信頼できるとは限らないため、`useTheme`フックやCSS変数（`var(--fg)`等）に依存せず、インラインstyleで明るい背景・濃い文字色を固定する方針とした。
+- 外側の`<div>`に`background: '#ffffff'`・`color: '#222222'`・`minHeight: '100%'`を追加し、body側のダーク背景（`var(--bg)`）を上書きして常に明るい背景で表示されるようにした。
+- 「再読み込み」`<button>`に`style={{ color: '#222222', background: '#f0f0f0', border: '1px solid #ccc', padding: '8px 16px' }}`を追加し、UAデフォルトのボタン配色に依存しない明示的な色指定とした。
+
+### 結果
+- `npm test`: 31 passed（4 files）。
+- `npm run build`（`tsc && vite build`）: 型エラーなく成功。
+- Playwright（`chromium`、`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`使用）で実測。検証のため`AppContent`に`window.location.hash === '#__test_error_boundary__'`で`throw`する一時的なテスト用フックを追加し、確認後は元に戻した（コミットには含まれない）。
+  - `localStorage.dokopre.theme = 'dark'`を設定した状態でErrorBoundaryのフォールバックUIを表示させ、`document.documentElement.dataset.theme`が`'dark'`であることを確認した上で、「再読み込み」ボタンの`getComputedStyle`を実測。文字色`rgb(34, 34, 34)`・背景色`rgb(240, 240, 240)`となり、UAデフォルトの黒文字（`rgb(0, 0, 0)`）ではなく、背景とのコントラストも十分であることを確認した。
+- `npx cap sync android` → `gradle assembleDebug --no-daemon`（`android/local.properties`の`sdk.dir=/opt/android-sdk`使用）: `BUILD SUCCESSFUL`、debug APKの再ビルドに成功した。
+
+### 次回開始位置
+- reviewerにこの修正のレビューを依頼する。承認後、Managerが完了判定を行いdebug APKをUserへ渡す。
+
+---
+
 ## 2026-08-07 T-014: Reviewerによる敵対的検証（Medium指摘1件、差し戻し）
 
 ### 実施内容
