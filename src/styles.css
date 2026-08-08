@@ -3,6 +3,7 @@
 @import '@fontsource/noto-sans-jp/700.css';
 
 :root {
+  color-scheme: light;
   --bg: #ffffff;
   --bg-muted: #f5f5f3;
   --fg: #222222;
@@ -41,6 +42,7 @@
 
 /* UIシャーシ側の色のみ上書きする。--slide-*はここに含めない（PNG/PDF出力との一致を保つため、D-003）。 */
 :root[data-theme='dark'] {
+  color-scheme: dark;
   --bg: #1c1c1e;
   --bg-muted: #2a2a2d;
   --fg: #e6e6e6;
@@ -366,7 +368,7 @@ button {
   font-weight: 500;
   font-family: inherit;
   color: var(--fg);
-  background: transparent;
+  background: var(--bg);
 }
 
 .editor__preview {
@@ -428,6 +430,7 @@ button {
   font-size: 15px;
   font-family: inherit;
   color: var(--fg);
+  background: var(--bg);
   resize: none;
   outline: none;
 }
