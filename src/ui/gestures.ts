@@ -89,6 +89,73 @@ export function useLongPress(onLongPress: () => void, ms = LONG_PRESS_MS): LongP
   return { onPointerDown, onPointerUp, onPointerLeave };
 }
 
+export type ImageTransform = { scale: number; offsetX: number; offsetY: number };
+
+export type ImagePanZoomState = {
+  pointers: Map<number, { x: number; y: number }>;
+  prevDistance: number | null;
+};
+
+export function createImagePanZoomState(): ImagePanZoomState {
+  return { pointers: new Map(), prevDistance: null };
+}
+
+const MIN_IMAGE_SCALE = 0.3;
+const MAX_IMAGE_SCALE = 5;
+
+function pointerDistance(pointers: Map<number, { x: number; y: number }>): number {
+  const [a, b] = [...pointers.values()];
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+/**
+ * 1本指ドラッグで移動、2本指ピンチで拡縮するポインタハンドラを作る。新規ライブラリは使わない。
+ * state は呼び出し側（画像1枚につき1つ）が保持し、複数画像・複数レンダリング間で使い回さないこと。
+ */
+export type ImagePanZoomHandlers = SwipeHandlers & {
+  onPointerCancel: (e: ReactPointerEvent) => void;
+};
+
+export function createImagePanZoomHandlers(
+  state: ImagePanZoomState,
+  transform: ImageTransform,
+  onChange: (next: ImageTransform) => void,
+  previewScale: number,
+): ImagePanZoomHandlers {
+  const onPointerDown = (e: ReactPointerEvent) => {
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    state.prevDistance = state.pointers.size === 2 ? pointerDistance(state.pointers) : null;
+  };
+
+  const onPointerMove = (e: ReactPointerEvent) => {
+    if (!state.pointers.has(e.pointerId)) return;
+    const prev = state.pointers.get(e.pointerId)!;
+    state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (state.pointers.size === 2) {
+      const distance = pointerDistance(state.pointers);
+      if (state.prevDistance) {
+        const scale = Math.min(MAX_IMAGE_SCALE, Math.max(MIN_IMAGE_SCALE, transform.scale * (distance / state.prevDistance)));
+        onChange({ ...transform, scale });
+      }
+      state.prevDistance = distance;
+      return;
+    }
+
+    const dx = (e.clientX - prev.x) / previewScale;
+    const dy = (e.clientY - prev.y) / previewScale;
+    onChange({ ...transform, offsetX: transform.offsetX + dx, offsetY: transform.offsetY + dy });
+  };
+
+  const onPointerUp = (e: ReactPointerEvent) => {
+    state.pointers.delete(e.pointerId);
+    state.prevDistance = state.pointers.size === 2 ? pointerDistance(state.pointers) : null;
+  };
+
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp };
+}
+
 export type DoubleTapHandlers = {
   onPointerDown: (e: ReactPointerEvent) => void;
   onPointerUp: (e: ReactPointerEvent) => void;

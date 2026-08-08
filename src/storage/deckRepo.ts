@@ -87,6 +87,9 @@ function validateAsset(asset: unknown, index: number): asserts asset is Asset {
   if (typeof a.id !== 'string' || typeof a.mime !== 'string') {
     throw new Error(`アセット${index + 1}にidまたはmimeがありません。`);
   }
+  if (!Number.isFinite(a.width) || a.width! <= 0 || !Number.isFinite(a.height) || a.height! <= 0) {
+    throw new Error(`アセット${index + 1}のwidth/heightが不正です。`);
+  }
 }
 
 /**

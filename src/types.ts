@@ -14,11 +14,22 @@ export type TextBlock = {
   marker?: MarkerColor | null;
 };
 
+/**
+ * 画像の表示調整。box に比率を保ったまま収めた状態（object-fit: contain 相当）を基準(scale=1, offset=0)とし、
+ * scale・offsetX/offsetYはユーザー操作による追加の拡縮・移動量。比率変更・自動クロップは行わない。
+ */
+export type ImageTransform = {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+};
+
 export type ImageBlock = {
   id: string;
   type: 'image';
   assetId: string;
   alt: string;
+  transform?: ImageTransform;
 };
 
 export type Block = TextBlock | ImageBlock;
