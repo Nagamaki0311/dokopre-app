@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import type { Asset, Block, Deck, MarkerColor, Slide, TemplateId } from '../types';
+import type { Asset, Block, Deck, ImageTransform, MarkerColor, Slide, TemplateId } from '../types';
 import { loadDeck, getAsset, putAsset, scheduleAutosave } from '../storage/deckRepo';
 import { createSlide } from '../deckFactory';
 import { genId } from '../layout/id';
@@ -257,6 +257,12 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     }
   }
 
+  function handleImageTransformChange(blockId: string, transform: ImageTransform) {
+    if (!currentSlide) return;
+    const blocks = currentSlide.blocks.map((b) => (b.id === blockId && b.type === 'image' ? { ...b, transform } : b));
+    updateSlideBlocks(slideIndex, blocks);
+  }
+
   function handleEditImageAlt() {
     if (!currentSlide) return;
     const imageBlock = currentSlide.blocks.find((b): b is Extract<Block, { type: 'image' }> => b.type === 'image');
@@ -349,7 +355,14 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
       <div className="editor__preview" {...previewSwipe}>
         {layout && (
           <>
-            <SlideView result={layout} assets={Object.values(assetsCache)} blocks={currentSlide.blocks} width={Math.min(560, window.innerWidth - 32)} />
+            <SlideView
+              result={layout}
+              assets={Object.values(assetsCache)}
+              blocks={currentSlide.blocks}
+              width={Math.min(560, window.innerWidth - 32)}
+              editableImage
+              onImageTransformChange={handleImageTransformChange}
+            />
             {layout.warnings.length > 0 && (
               <button className="editor__warning-badge" onClick={() => setWarningSheetOpen(true)}>
                 ⚠ {layout.warnings[0].message}

@@ -1,5 +1,6 @@
 import type { Asset, Block, LayoutResult, MarkerColor } from '../types';
 import { SLIDE_H, SLIDE_W } from '../types';
+import { computeImageRect, DEFAULT_IMAGE_TRANSFORM } from './imageTransform';
 
 const MARKER_COLORS: Record<MarkerColor, string> = {
   yellow: '#fff3a0',
@@ -17,26 +18,6 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error('画像の読み込みに失敗しました。'));
     img.src = src;
   });
-}
-
-/** object-fit: cover 相当のソース矩形を計算して描画する（SlideView.tsx の <img style objectFit: 'cover'> と一致させる）。 */
-function drawImageCover(ctx: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number): void {
-  const imageRatio = img.width / img.height;
-  const boxRatio = w / h;
-  let sx = 0;
-  let sy = 0;
-  let sw = img.width;
-  let sh = img.height;
-
-  if (imageRatio > boxRatio) {
-    sw = img.height * boxRatio;
-    sx = (img.width - sw) / 2;
-  } else {
-    sh = img.width / boxRatio;
-    sy = (img.height - sh) / 2;
-  }
-
-  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
 /**
@@ -58,12 +39,18 @@ export async function drawLayout(
   for (const box of result.boxes) {
     if (box.role === 'image') {
       const block = blocks.find((b) => b.id === box.blockId);
-      const assetId = block && block.type === 'image' ? block.assetId : undefined;
-      const asset = assets.find((a) => a.id === assetId);
+      const imageBlock = block && block.type === 'image' ? block : undefined;
+      const asset = assets.find((a) => a.id === imageBlock?.assetId);
       if (asset?.data) {
         try {
           const img = await loadImage(asset.data);
-          drawImageCover(ctx, img, box.x, box.y, box.w, box.h);
+          const rect = computeImageRect(asset, box, imageBlock?.transform ?? DEFAULT_IMAGE_TRANSFORM);
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(box.x, box.y, box.w, box.h);
+          ctx.clip();
+          ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h);
+          ctx.restore();
         } catch {
           // 画像読み込み失敗時はその画像枠を空欄のまま描画継続する
         }
