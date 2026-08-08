@@ -35,6 +35,12 @@ export function SlideView({ result, assets, width, blocks, editableImage, onImag
     return state;
   }
 
+  // スライド切替・画像削除で使われなくなった画像のポインタ状態を捨てる
+  const currentImageBlockIds = new Set(result.boxes.filter((b) => b.role === 'image').map((b) => b.blockId));
+  for (const blockId of panStates.current.keys()) {
+    if (!currentImageBlockIds.has(blockId)) panStates.current.delete(blockId);
+  }
+
   return (
     <div className="slide-view" style={{ width, height }}>
       <div
@@ -67,6 +73,7 @@ export function SlideView({ result, assets, width, blocks, editableImage, onImag
                 onPointerDown={panHandlers && ((e) => { e.stopPropagation(); panHandlers.onPointerDown(e); })}
                 onPointerMove={panHandlers && ((e) => { e.stopPropagation(); panHandlers.onPointerMove(e); })}
                 onPointerUp={panHandlers && ((e) => { e.stopPropagation(); panHandlers.onPointerUp(e); })}
+                onPointerCancel={panHandlers && ((e) => { e.stopPropagation(); panHandlers.onPointerCancel(e); })}
               >
                 {asset?.data && rect ? (
                   <img

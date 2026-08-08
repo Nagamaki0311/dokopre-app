@@ -57,6 +57,14 @@ describe('importDeckJson の検証', () => {
     await expect(importDeckJson(JSON.stringify(deck))).rejects.toThrow(/アセット/);
   });
 
+  it('assets の要素に width/height がない、または0以下の場合エラーを投げる', async () => {
+    const deck = baseDeck({ assets: [{ id: 'asset-1', mime: 'image/png' }] });
+    await expect(importDeckJson(JSON.stringify(deck))).rejects.toThrow(/アセット/);
+
+    const deckZero = baseDeck({ assets: [{ id: 'asset-1', mime: 'image/png', width: 0, height: 10 }] });
+    await expect(importDeckJson(JSON.stringify(deckZero))).rejects.toThrow(/アセット/);
+  });
+
   it('schemaVersion が不一致の場合エラーを投げる', async () => {
     const deck = baseDeck({ schemaVersion: SCHEMA_VERSION + 1 });
     await expect(importDeckJson(JSON.stringify(deck))).rejects.toThrow(/schemaVersion/);

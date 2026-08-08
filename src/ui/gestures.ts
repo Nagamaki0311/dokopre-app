@@ -112,12 +112,16 @@ function pointerDistance(pointers: Map<number, { x: number; y: number }>): numbe
  * 1本指ドラッグで移動、2本指ピンチで拡縮するポインタハンドラを作る。新規ライブラリは使わない。
  * state は呼び出し側（画像1枚につき1つ）が保持し、複数画像・複数レンダリング間で使い回さないこと。
  */
+export type ImagePanZoomHandlers = SwipeHandlers & {
+  onPointerCancel: (e: ReactPointerEvent) => void;
+};
+
 export function createImagePanZoomHandlers(
   state: ImagePanZoomState,
   transform: ImageTransform,
   onChange: (next: ImageTransform) => void,
   previewScale: number,
-): SwipeHandlers {
+): ImagePanZoomHandlers {
   const onPointerDown = (e: ReactPointerEvent) => {
     (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
     state.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -149,7 +153,7 @@ export function createImagePanZoomHandlers(
     state.prevDistance = state.pointers.size === 2 ? pointerDistance(state.pointers) : null;
   };
 
-  return { onPointerDown, onPointerMove, onPointerUp };
+  return { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp };
 }
 
 export type DoubleTapHandlers = {
