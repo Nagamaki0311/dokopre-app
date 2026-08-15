@@ -15,13 +15,16 @@ export type TextBlock = {
 };
 
 /**
- * 画像の表示調整。box に比率を保ったまま収めた状態（object-fit: contain 相当）を基準(scale=1, offset=0)とし、
- * scale・offsetX/offsetYはユーザー操作による追加の拡縮・移動量。比率変更・自動クロップは行わない。
+ * 画像のスライド上の絶対配置（スライド座標系 0..SLIDE_W, 0..SLIDE_H）。テキストの自動レイアウトとは独立しており、
+ * 画像用のレイアウト枠には拘束されない。w/hは常に画像の縦横比を保ったまま拡縮される（比率変更・自動クロップは行わない）。
+ * z はテキストボックス群との重なり順（'front'=テキストより前面、'back'=背面）。
  */
-export type ImageTransform = {
-  scale: number;
-  offsetX: number;
-  offsetY: number;
+export type ImagePlacement = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  z: 'front' | 'back';
 };
 
 export type ImageBlock = {
@@ -29,7 +32,7 @@ export type ImageBlock = {
   type: 'image';
   assetId: string;
   alt: string;
-  transform?: ImageTransform;
+  placement?: ImagePlacement;
 };
 
 export type Block = TextBlock | ImageBlock;
@@ -65,7 +68,6 @@ export type BoxRole =
   | 'subheading'
   | 'body'
   | 'bullet'
-  | 'image'
   | 'statement';
 
 export type LayoutBox = {

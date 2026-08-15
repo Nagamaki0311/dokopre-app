@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
-import type { Asset, Block, Deck, ImageTransform, MarkerColor, Slide, TemplateId } from '../types';
+import type { Asset, Block, Deck, ImagePlacement, MarkerColor, Slide, TemplateId } from '../types';
 import { loadDeck, getAsset, putAsset, scheduleAutosave } from '../storage/deckRepo';
 import { createSlide } from '../deckFactory';
 import { genId } from '../layout/id';
@@ -11,6 +11,7 @@ import { summarize, readability } from '../layout/assist';
 import { exportSlideAsPng, downloadBlob } from '../export/exportPng';
 import { useFontsReady } from '../hooks/useFontsReady';
 import { SlideView } from '../render/SlideView';
+import { defaultImagePlacement } from '../render/imagePlacement';
 import { useSwipe, useLongPress } from '../ui/gestures';
 import type { ScreenState } from '../hooks/useScreen';
 
@@ -26,7 +27,7 @@ const TEMPLATE_CHOICES: { id: TemplateId | 'auto'; label: string }[] = [
   { id: 'statement', label: '主張' },
   { id: 'bullets', label: '箇条書き' },
   { id: 'twoColumn', label: '2カラム' },
-  { id: 'imageSide', label: '画像＋文章' },
+  { id: 'imageSide', label: '文章（左半分）' },
 ];
 const MARKER_CYCLE: MarkerColor[] = ['yellow', 'pink', 'blue'];
 const SUMMARIZE_RATIO = 0.6;
@@ -246,7 +247,13 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
 
       const withoutOldImage = currentSlide.blocks.filter((b) => b.type !== 'image');
       const defaultAlt = file.name.replace(/\.[^./\\]+$/, '');
-      const imageBlock: Block = { id: genId('block'), type: 'image', assetId: asset.id, alt: defaultAlt };
+      const imageBlock: Block = {
+        id: genId('block'),
+        type: 'image',
+        assetId: asset.id,
+        alt: defaultAlt,
+        placement: defaultImagePlacement(asset),
+      };
       const blocks = [...withoutOldImage, imageBlock];
       const assetsMeta = [...deck.assets.filter((a) => a.id !== asset.id), { id: asset.id, mime: asset.mime, width: asset.width, height: asset.height }];
       const slides = deck.slides.map((s, i) => (i === slideIndex ? { ...s, blocks } : s));
@@ -257,9 +264,9 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     }
   }
 
-  function handleImageTransformChange(blockId: string, transform: ImageTransform) {
+  function handleImagePlacementChange(blockId: string, placement: ImagePlacement) {
     if (!currentSlide) return;
-    const blocks = currentSlide.blocks.map((b) => (b.id === blockId && b.type === 'image' ? { ...b, transform } : b));
+    const blocks = currentSlide.blocks.map((b) => (b.id === blockId && b.type === 'image' ? { ...b, placement } : b));
     updateSlideBlocks(slideIndex, blocks);
   }
 
@@ -270,6 +277,20 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     const next = window.prompt('画像の代替テキスト（読み上げ用の説明）を入力してください', imageBlock.alt);
     if (next === null) return;
     const blocks = currentSlide.blocks.map((b) => (b.id === imageBlock.id ? { ...b, alt: next } : b));
+    updateSlideBlocks(slideIndex, blocks);
+  }
+
+  function handleToggleImageZ() {
+    if (!currentSlide) return;
+    const imageBlock = currentSlide.blocks.find((b): b is Extract<Block, { type: 'image' }> => b.type === 'image');
+    if (!imageBlock) return;
+    const asset = assetsCache[imageBlock.assetId];
+    const base = imageBlock.placement ?? (asset ? defaultImagePlacement(asset) : undefined);
+    if (!base) return;
+    const nextZ: ImagePlacement['z'] = base.z === 'front' ? 'back' : 'front';
+    const blocks = currentSlide.blocks.map((b) =>
+      b.id === imageBlock.id && b.type === 'image' ? { ...b, placement: { ...base, z: nextZ } } : b,
+    );
     updateSlideBlocks(slideIndex, blocks);
   }
 
@@ -339,6 +360,9 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
     return <div className="editor" />;
   }
 
+  const currentImageBlock = currentSlide.blocks.find((b): b is Extract<Block, { type: 'image' }> => b.type === 'image');
+  const currentImageZ = currentImageBlock?.placement?.z ?? 'front';
+
   return (
     <div className="editor">
       <div className="editor__header">
@@ -361,7 +385,7 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
               blocks={currentSlide.blocks}
               width={Math.min(560, window.innerWidth - 32)}
               editableImage
-              onImageTransformChange={handleImageTransformChange}
+              onImagePlacementChange={handleImagePlacementChange}
             />
             {layout.warnings.length > 0 && (
               <button className="editor__warning-badge" onClick={() => setWarningSheetOpen(true)}>
@@ -404,9 +428,14 @@ export function EditorScreen({ deckId, navigate, back }: Props) {
           画像
         </button>
         <input ref={imageInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAddImage} />
-        {currentSlide.blocks.some((b) => b.type === 'image') && (
+        {currentImageBlock && (
           <button className="editor__tool" onClick={handleEditImageAlt}>
             画像の説明
+          </button>
+        )}
+        {currentImageBlock && (
+          <button className="editor__tool" onClick={handleToggleImageZ}>
+            画像を{currentImageZ === 'front' ? '背面' : '前面'}へ
           </button>
         )}
         {MARKER_CYCLE.map((color) => (
