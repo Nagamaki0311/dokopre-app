@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
+import type { ImagePlacement } from '../types';
 
 const SWIPE_THRESHOLD_PX = 48;
 const LONG_PRESS_MS = 500;
@@ -89,8 +90,6 @@ export function useLongPress(onLongPress: () => void, ms = LONG_PRESS_MS): LongP
   return { onPointerDown, onPointerUp, onPointerLeave };
 }
 
-export type ImageTransform = { scale: number; offsetX: number; offsetY: number };
-
 export type ImagePanZoomState = {
   pointers: Map<number, { x: number; y: number }>;
   prevDistance: number | null;
@@ -100,8 +99,8 @@ export function createImagePanZoomState(): ImagePanZoomState {
   return { pointers: new Map(), prevDistance: null };
 }
 
-const MIN_IMAGE_SCALE = 0.3;
-const MAX_IMAGE_SCALE = 5;
+const MIN_IMAGE_SIZE_PX = 40;
+const MAX_IMAGE_SIZE_PX = 6000;
 
 function pointerDistance(pointers: Map<number, { x: number; y: number }>): number {
   const [a, b] = [...pointers.values()];
@@ -109,8 +108,8 @@ function pointerDistance(pointers: Map<number, { x: number; y: number }>): numbe
 }
 
 /**
- * 1本指ドラッグで移動、2本指ピンチで拡縮するポインタハンドラを作る。新規ライブラリは使わない。
- * state は呼び出し側（画像1枚につき1つ）が保持し、複数画像・複数レンダリング間で使い回さないこと。
+ * 1本指ドラッグで移動、2本指ピンチで拡縮（指の中点を軸に、縦横比は常に維持）するポインタハンドラを作る。
+ * 新規ライブラリは使わない。state は呼び出し側（画像1枚につき1つ）が保持し、複数画像・複数レンダリング間で使い回さないこと。
  */
 export type ImagePanZoomHandlers = SwipeHandlers & {
   onPointerCancel: (e: ReactPointerEvent) => void;
@@ -118,8 +117,8 @@ export type ImagePanZoomHandlers = SwipeHandlers & {
 
 export function createImagePanZoomHandlers(
   state: ImagePanZoomState,
-  transform: ImageTransform,
-  onChange: (next: ImageTransform) => void,
+  placement: ImagePlacement,
+  onChange: (next: ImagePlacement) => void,
   previewScale: number,
 ): ImagePanZoomHandlers {
   const onPointerDown = (e: ReactPointerEvent) => {
@@ -136,8 +135,33 @@ export function createImagePanZoomHandlers(
     if (state.pointers.size === 2) {
       const distance = pointerDistance(state.pointers);
       if (state.prevDistance) {
-        const scale = Math.min(MAX_IMAGE_SCALE, Math.max(MIN_IMAGE_SCALE, transform.scale * (distance / state.prevDistance)));
-        onChange({ ...transform, scale });
+        const factor = distance / state.prevDistance;
+        let nextW = placement.w * factor;
+        let nextH = placement.h * factor;
+        const maxSide = Math.max(nextW, nextH);
+        const minSide = Math.min(nextW, nextH);
+        if (maxSide > MAX_IMAGE_SIZE_PX) {
+          const k = MAX_IMAGE_SIZE_PX / maxSide;
+          nextW *= k;
+          nextH *= k;
+        }
+        if (minSide < MIN_IMAGE_SIZE_PX) {
+          const k = MIN_IMAGE_SIZE_PX / minSide;
+          nextW *= k;
+          nextH *= k;
+        }
+        // クランプ後の実際の拡縮率で、指の中点（ピンチの軸）がスライド座標上の同じ点に留まるよう位置を補正する。
+        // 要素の描画済み矩形（CSSのscale変換込み）から、指の中点に対応するスライド座標系の点を逆算する。
+        const rect = (e.currentTarget as Element).getBoundingClientRect();
+        const [a, b] = [...state.pointers.values()];
+        const midScreenX = (a.x + b.x) / 2;
+        const midScreenY = (a.y + b.y) / 2;
+        const midSlideX = placement.x + ((midScreenX - rect.left) / rect.width) * placement.w;
+        const midSlideY = placement.y + ((midScreenY - rect.top) / rect.height) * placement.h;
+        const actualFactor = nextW / placement.w;
+        const nextX = midSlideX - (midSlideX - placement.x) * actualFactor;
+        const nextY = midSlideY - (midSlideY - placement.y) * actualFactor;
+        onChange({ ...placement, x: nextX, y: nextY, w: nextW, h: nextH });
       }
       state.prevDistance = distance;
       return;
@@ -145,7 +169,7 @@ export function createImagePanZoomHandlers(
 
     const dx = (e.clientX - prev.x) / previewScale;
     const dy = (e.clientY - prev.y) / previewScale;
-    onChange({ ...transform, offsetX: transform.offsetX + dx, offsetY: transform.offsetY + dy });
+    onChange({ ...placement, x: placement.x + dx, y: placement.y + dy });
   };
 
   const onPointerUp = (e: ReactPointerEvent) => {

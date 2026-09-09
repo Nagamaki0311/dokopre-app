@@ -165,7 +165,12 @@ export function HomeScreen({ navigate }: Props) {
       </div>
 
       <div className="home__list">
-        {decks.length === 0 && <p className="home__empty">デッキがありません。右下の＋から作成してください。</p>}
+        {decks.length === 0 && (
+          <div className="home__empty">
+            <span className="home__empty-icon" aria-hidden="true">🗂️</span>
+            <p className="home__empty-text">デッキがありません。右下の＋から作成してください。</p>
+          </div>
+        )}
         {decks.map((deck) => (
           <DeckCard
             key={deck.id}

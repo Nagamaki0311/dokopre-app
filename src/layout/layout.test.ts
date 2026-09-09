@@ -49,7 +49,7 @@ describe('layoutSlide', () => {
     expect(result.warnings.some((w) => w.code === 'too-much-text')).toBe(true);
   });
 
-  it('(e) 画像ブロックがあると imageSide テンプレートになる', () => {
+  it('(e) 画像ブロックはテンプレート自動選択に影響せず、テキストのみでテンプレートが決まる', () => {
     const slide: Slide = {
       id: 'slide-1',
       layoutHint: 'auto',
@@ -60,21 +60,34 @@ describe('layoutSlide', () => {
       ],
     };
     const result = layoutSlide(slide, createApproxMeasurer());
-    expect(result.template).toBe('imageSide');
-    expect(result.boxes.some((b) => b.role === 'image')).toBe(true);
+    // 画像を除くとテキストは見出し1件のみなので title テンプレートになる（画像の有無は無関係）
+    expect(result.template).toBe('title');
+  });
+
+  it('(f) 画像ブロックは layoutSlide の boxes に含まれない（自由配置のためレイアウトボックス化しない）', () => {
+    const slide: Slide = {
+      id: 'slide-1',
+      layoutHint: 'bullets',
+      notes: '',
+      blocks: [
+        { id: 'b1', type: 'heading', text: '見出し' },
+        { id: 'b2', type: 'bullet', text: '項目1' },
+        { id: 'b3', type: 'image', assetId: 'asset-1', alt: '説明画像' },
+      ],
+    };
+    const result = layoutSlide(slide, createApproxMeasurer());
+    expect(result.boxes.some((b) => b.blockId === 'b3')).toBe(false);
+    expect(result.boxes.some((b) => b.blockId === 'b2')).toBe(true);
   });
 });
 
 describe('selectAlign / layoutSlide の align', () => {
-  it('(a) imageSide テンプレートは left になる', () => {
+  it('(a) imageSide テンプレート（手動指定）は left になる', () => {
     const slide: Slide = {
       id: 'slide-1',
-      layoutHint: 'auto',
+      layoutHint: 'imageSide',
       notes: '',
-      blocks: [
-        { id: 'b1', type: 'heading', text: '見出し' },
-        { id: 'b2', type: 'image', assetId: 'asset-1', alt: '説明画像' },
-      ],
+      blocks: [{ id: 'b1', type: 'heading', text: '見出し' }],
     };
     const result = layoutSlide(slide, createApproxMeasurer());
     expect(result.template).toBe('imageSide');

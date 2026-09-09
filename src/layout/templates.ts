@@ -1,6 +1,6 @@
 import type { AlignId, TemplateId } from '../types';
 import type { AnalyzedBlock } from './analyze';
-import { SLIDE_W, SLIDE_H } from '../types';
+import { SLIDE_W } from '../types';
 
 export type Rect = {
   x: number;
@@ -16,7 +16,6 @@ export type FrameSet = {
   statement?: Rect;
   left?: Rect;
   right?: Rect;
-  image?: Rect;
 };
 
 const MARGIN = 96;
@@ -29,12 +28,11 @@ const STATEMENT_LONG_THRESHOLD = 40;
 export function selectTemplate(analyzed: AnalyzedBlock[], hint: TemplateId | 'auto'): TemplateId {
   if (hint !== 'auto') return hint;
 
-  const hasImage = analyzed.some((b) => b.type === 'image');
+  // 画像は自動テキストレイアウトから独立した自由配置のため、テンプレート選択には一切影響させない。
   const textBlocks = analyzed.filter((b) => b.type !== 'image');
   const bulletCount = analyzed.filter((b) => b.type === 'bullet').length;
   const nonHeadingNonImage = textBlocks.filter((b) => b.type !== 'heading');
 
-  if (hasImage) return 'imageSide';
   if (bulletCount >= 2) return 'bullets';
 
   if (textBlocks.length === 1) {
@@ -113,10 +111,11 @@ export function frames(template: TemplateId): FrameSet {
         },
       };
     case 'imageSide':
+      // 画像は自由配置のため枠を割り当てない。テキストを左半分に収める構図のみを提供する
+      // （右半分は、ユーザーが画像を自由配置する際の余白として空けておく）。
       return {
         heading: { x: 64, y: 56, w: SLIDE_W / 2 - 96, h: 100, align: 'left' },
         body: { x: 64, y: 180, w: SLIDE_W / 2 - 96, h: 480, align: 'left' },
-        image: { x: SLIDE_W / 2 + 32, y: 56, w: SLIDE_W / 2 - 96, h: SLIDE_H - 112, align: 'center' },
       };
     default:
       return {};

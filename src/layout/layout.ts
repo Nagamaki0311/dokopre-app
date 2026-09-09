@@ -76,22 +76,7 @@ function blockWeight(block: AnalyzedBlock, baseWeight: number): number {
 
 function buildBox(assignment: Assignment, measurer: TextMeasurer, warnings: LayoutWarning[]): LayoutBox | null {
   const { block, rect, role } = assignment;
-  if (block.type === 'image') {
-    return {
-      blockId: block.id,
-      role: 'image',
-      x: rect.x,
-      y: rect.y,
-      w: rect.w,
-      h: rect.h,
-      fontSize: 0,
-      lineHeight: 0,
-      weight: 400,
-      align: rect.align,
-      marker: null,
-      lines: [],
-    };
-  }
+  if (block.type === 'image') return null;
 
   const baseWeight = role === 'heading' || role === 'statement' ? 700 : 400;
   const weight = blockWeight(block, baseWeight);
@@ -201,7 +186,6 @@ function assign(template: ReturnType<typeof selectTemplate>, analyzed: AnalyzedB
     }
     case 'imageSide': {
       if (heading && fs.heading) assignments.push({ block: heading, rect: fs.heading, role: 'heading' });
-      if (image && fs.image) assignments.push({ block: image, rect: fs.image, role: 'image' });
       const items = rest;
       if (items.length > MAX_STACK_ITEMS) {
         warnings.push({
